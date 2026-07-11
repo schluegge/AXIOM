@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schemas/0.1.0/contract.schema.json",
+  "document_kind": "axiom.bench.contract",
+  "schema_version": "0.1.0",
+  "benchmark_series": "0.1.x",
+  "status": "proposed",
+  "active_milestone": "M1",
+  "specification_path": "AXIOM_BENCH_SPEC.md",
+  "preregistration_path": "AXIOM_BENCH_PREREGISTRATION.md",
+  "source_evidence_path": "M1_BENCHMARK_SOURCE_EVIDENCE.md",
+  "schema_paths": {
+    "contract": "benchmarks/schemas/0.1.0/contract.schema.json",
+    "suite": "benchmarks/schemas/0.1.0/suite.schema.json",
+    "task": "benchmarks/schemas/0.1.0/task.schema.json",
+    "language_pack": "benchmarks/schemas/0.1.0/language-pack.schema.json",
+    "toolchains": "benchmarks/schemas/0.1.0/toolchains.schema.json",
+    "attempt": "benchmarks/schemas/0.1.0/attempt.schema.json",
+    "run": "benchmarks/schemas/0.1.0/run.schema.json",
+    "trace_event": "benchmarks/schemas/0.1.0/trace-event.schema.json"
+  },
+  "required_lanes": [
+    "language_only",
+    "compiler_assisted",
+    "full_agent"
+  ],
+  "required_conformance_adapters": [
+    "reference",
+    "seeded_wrong",
+    "replay"
+  ],
+  "trust_classes": [
+    "trusted_reference",
+    "trusted_seeded_wrong",
+    "replay_only",
+    "untrusted_model_output"
+  ],
+  "untrusted_local_execution": "forbidden",
+  "claim_policy": "seed_cannot_prove_ai_first_superiority"
+}
