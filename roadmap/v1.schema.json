@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/roadmap/v1.schema.json",
+  "title": "AXIOM v1 roadmap tracking contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "release",
+    "program_issue",
+    "release_gate_issue",
+    "active_milestone",
+    "canonical_documents",
+    "milestones",
+    "release_gate",
+    "post_v1_issues"
+  ],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schema_version": {"const": "1.0.0"},
+    "release": {"const": "v1.0.0"},
+    "program_issue": {"type": "integer", "minimum": 1},
+    "release_gate_issue": {"type": "integer", "minimum": 1},
+    "active_milestone": {"pattern": "^M(?:[0-9]|1[0-3])$"},
+    "canonical_documents": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "milestones": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "items": {"$ref": "#/$defs/milestone"}
+    },
+    "release_gate": {
+      "allOf": [
+        {"$ref": "#/$defs/trackedIssue"},
+        {
+          "type": "object",
+          "required": ["id", "depends_on"],
+          "properties": {
+            "id": {"const": "V1"},
+            "depends_on": {"const": "M13"}
+          }
+        }
+      ]
+    },
+    "post_v1_issues": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1}
+    }
+  },
+  "$defs": {
+    "trackedIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "issue", "depends_on", "status", "title_prefix"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "issue": {"type": "integer", "minimum": 1},
+        "depends_on": {"type": ["string", "null"]},
+        "status": {"enum": ["blocked", "active", "complete"]},
+        "title_prefix": {"type": "string", "minLength": 1}
+      }
+    },
+    "milestone": {
+      "allOf": [
+        {"$ref": "#/$defs/trackedIssue"},
+        {
+          "type": "object",
+          "required": ["next"],
+          "properties": {
+            "id": {"pattern": "^M(?:[0-9]|1[0-3])$"},
+            "next": {"pattern": "^(?:M(?:[0-9]|1[0-3])|V1)$"}
+          }
+        }
+      ]
+    }
+  }
+}
