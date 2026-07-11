@@ -1,0 +1,242 @@
++- LLVM contains no reference `inttoptr`, `ptrtoint`, or null construction
++- ownership/symbol/effect documents expose borrow facts
++
++## Conservative boundary
++
++Borrow conflicts are tracked at whole-local-root granularity. Disjoint fields
++of one struct are not simultaneously borrowable when either borrow conflicts at
++the root. This is conservative and safe, not a field-sensitive lifetime proof.
+ 
+ ## Not proven
+ 
+-- references, borrowing, or owned-resource semantics
+-- slices or pointer syntax
+-- heap allocation
+-- packed layouts or broad cross-platform ABI stability
++- raw pointers, null pointers, pointer arithmetic, or `unsafe`
++- reborrowing or non-lexical lifetimes
++- lifetime parameters or reference returns
++- reference fields/arrays
++- slices or heap allocation
++- owned-resource destruction semantics
++- broad cross-platform ABI stability
+ - complete effect/capability system
+-- Rust bootstrap parity
+-- WebAssembly runtime execution
+-- bare-metal execution in emulator/hardware
+-- GPU execution
+-- LSP, package ecosystem, self-hosting, or Axiom 1.0
++- Rust bootstrap parity, self-hosting, GPU execution, or AXIOM 1.0
+ 
+ ## Evidence reproducibility
+ 
+@@ -54,9 +51,9 @@ Two complete runs in the original checkout and one cache-free run from a
+ different absolute root produced the same byte-for-byte Evidence ZIP:
+ 
+ ```text
+-a9c52dd90db9ff2b7b2c23bcd4d75683cf07a84a39e184c49807c8c5c716a4db
++2d22975825266171713bedf77150b27df59015d338204a4d5908ae7a7c4a939e
+ ```
+ 
+ The runner normalizes only volatile unittest wall-clock duration and fixes ZIP
+-metadata. Compiler artifacts, diagnostics, native results, layouts, generated
+-matrices, and reviewer reports remain inside the archive.
++metadata. Compiler artifacts, diagnostics, native results, generated matrices,
++and reviewer reports remain inside the archive.
+diff --git a/README.md b/README.md
+index ee77fbcd87eff31b8853cf6174f45b85d478f1c1..cf00845e065f40adf6bc4cf2c10940f883e8b5d2 100644
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-# AXIOM v0.6.0 Reference Compiler
++# AXIOM v0.7.0 Reference Compiler
+ 
+ AXIOM is an AI-first universal systems language project. This repository
+ contains an executed Python/LLVM semantic oracle for the planned Rust bootstrap
+@@ -11,7 +11,7 @@ UTF-8 source
+ → lexer
+ → parser and versioned AST
+ → canonical formatter
+-→ name/type/effect/l-value analysis
++→ name/type/effect/l-value/borrow analysis
+ → target layout engine
+ → HIR and CFG
+ → interpreter
+@@ -28,11 +28,13 @@ UTF-8 source
+ - `if` and `while`
+ - checked signed `i32` arithmetic
+ - structs and fixed-size arrays
+-- nested aggregate values
+-- aggregate parameters and returns by value
+-- field and index reads
+-- whole-value, field, array-element, and nested structured assignment
+-- checked dynamic indices for reads and writes
++- nested aggregate values and structured mutation
++- checked dynamic indices for reads, writes, and borrows
++- non-null scoped shared references `&T`
++- non-null scoped mutable references `&mut T`
++- borrow expressions, dereference reads, and dereference writes
++- conservative lexical whole-root borrow checking
++- reference parameters and immutable local reference bindings
+ - deterministic x86_64 Linux layout inspection
+ - simple C-compatible struct-by-value interoperability
+ - `system` and `script` profile parsing
+@@ -40,15 +42,14 @@ UTF-8 source
+ Example:
+ 
+ ```axiom
+-struct Holder {
+-    values: [[i32; 2]; 2],
++fn increment(value: &mut i32) -> i32 {
++    *value = *value + 1;
++    return *value;
+ }
+ 
+ fn main() -> i32 {
+-    var holder: Holder = Holder { values: [[1, 2], [3, 4]] };
+-    let row: i32 = 1;
+-    holder.values[row][0] = 35;
+-    return holder.values[0][0] + holder.values[1][0] + holder.values[1][1];
++    var value: i32 = 41;
++    return increment(&mut value);
+ }
+ ```
+ 
+@@ -63,32 +64,28 @@ Requirements:
+ python3 run_repo_proof.py
+ ```
+ 
+-The runner executes the test suite, separate Agent B process, differential
+-corpus, invalid diagnostics, layout/ABI checks, generated matrices, and
+-reproducibility-sensitive evidence generation. It creates:
++The runner executes the full suite, separate Agent B process, native
++differential corpus, invalid diagnostics, generated matrices, layout/ABI
++checks, and reproducibility-sensitive Evidence generation. It creates:
+ 
+ ```text
+ evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
+ ```
+ 
+-## Inspect layout
+-
+-```bash
+-python3 -m axiom_proof.cli explain layout examples/layout.ax Mixed
+-```
+-
+ ## Governing semantics
+ 
+ - `ARITHMETIC_SEMANTICS.md`
+ - `AGGREGATE_SEMANTICS.md`
+ - `MUTATION_SEMANTICS.md`
++- `REFERENCE_SEMANTICS.md`
+ - `AGENTS.md`
+ - `PROOF_STATUS.md`
+ - `CONTEXT7_SOURCE_EVIDENCE.md`
+ 
+ ## Proof boundary
+ 
+-This is an executable architecture and semantics oracle, not AXIOM 1.0. It
+-does not yet prove the Rust bootstrap compiler, references/borrowing, full
+-ownership/lifetimes, slices, heap allocation, broad platform ABI stability,
+-GPU execution, LSP, package ecosystem, or self-hosting.
++This is an executable semantics oracle, not AXIOM 1.0. It does not yet prove
++raw pointers, `unsafe`, reborrowing, non-lexical lifetimes, reference returns,
++reference fields, slices, heap ownership, broad platform ABI stability, the
++Rust bootstrap compiler, GPU execution, LSP, package ecosystem, or
++self-hosting.
+diff --git a/REFERENCE_SEMANTICS.md b/REFERENCE_SEMANTICS.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..d27a1d3cacbc9123db4e5e5bd74c933acfc5fe99
+--- /dev/null
++++ b/REFERENCE_SEMANTICS.md
+@@ -0,0 +1,182 @@
++# Scoped Reference Semantics
++
++Version: 0.7.0  
++Proven target: `x86_64-unknown-linux-gnu`
++
++## Purpose
++
++AXIOM v0.7.0 introduces the first safe aliasing surface:
++
++```axiom
++&T
++&mut T
++&value
++&mut value
++*reference
++*reference = new_value;
++```
++
++References are non-null, non-forgeable, lexically scoped, and non-escaping in
++this slice. They are produced only from valid l-values whose storage already
++exists.
++
++## Types
++
++`&T` is a shared reference. It permits reads of `T`.
++
++`&mut T` is an exclusive mutable reference. It permits reads and writes of
++`T`.
++
++References may be function parameters and immutable local `let` bindings.
++They may not be:
++
++- function return types
++- struct fields
++- fixed-array elements
++- mutable local reference bindings
++- forged from integers or null
++- reborrowed in v0.7
++
++## Borrow roots
++
++Borrow analysis is intentionally conservative. Every l-value borrow resolves
++to its local root binding. Borrowing `holder.values[index]` therefore locks the
++whole `holder` root for the lexical lifetime of the reference.
++
++This can reject programs that a future field-sensitive borrow checker could
++accept. It must not accept unsafe aliasing merely for ergonomics.
++
++## Shared-borrow law
++
++Any number of shared borrows of one root may coexist.
++
++While at least one shared borrow is live:
++
++- the root may be read
++- shared references may be copied and passed repeatedly
++- the root may not be written
++- the root may not be mutably borrowed
++
++## Mutable-borrow law
++
++A mutable borrow requires a `var` root.
++
++While a mutable borrow is live:
++
++- the root may not be read directly
++- the root may not be written directly
++- no second shared or mutable borrow may be created
++- the mutable reference is the exclusive access path
++
++A shared reference cannot be used as an assignment target.
++
++## Lexical lifetime
++
++A reference local remains live until the end of its declaring block. The
++corresponding borrow is released when that block ends.
++
++A direct borrow used as a call argument is temporary. It remains live through
++the complete left-to-right evaluation of that call's argument list and is
++released when the call expression finishes.
++
++## Mutable-reference call loans
++
++Passing an existing `&mut T` value to a function creates a temporary exclusive
++loan of that reference for the complete call argument evaluation.
++
++Consequences:
++
++```axiom
++f(reference, reference);   // rejected
