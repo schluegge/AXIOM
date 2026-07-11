@@ -1,0 +1,210 @@
+from __future__ import annotations
+
+import json
+import os
+import stat
+import zipfile
+from hashlib import sha256
+from pathlib import Path, PurePosixPath
+from typing import Any, Iterable
+
+FIXED_TIME = (2026, 7, 11, 0, 0, 0)
+EPOCH_TEXT = "1970-01-01T00:00:00Z"
+MAX_REPLAY_ENTRIES = 1000
+MAX_REPLAY_ENTRY_BYTES = 10 * 1024 * 1024
+MAX_REPLAY_TOTAL_BYTES = 50 * 1024 * 1024
+
+
+def canonical_json(value: Any) -> str:
+    return json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+
+
+def sha256_bytes(value: bytes) -> str:
+    return sha256(value).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    return sha256_bytes(path.read_bytes())
+
+
+def semantic_sha256(value: Any, excluded_keys: frozenset[str] = frozenset()) -> str:
+    def strip(item: Any) -> Any:
+        if isinstance(item, dict):
+            return {
+                key: strip(child)
+                for key, child in sorted(item.items())
+                if key not in excluded_keys
+            }
+        if isinstance(item, list):
+            return [strip(child) for child in item]
+        return item
+
+    payload = json.dumps(strip(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return sha256_bytes(payload.encode("utf-8"))
+
+
+def safe_relative_path(value: str) -> PurePosixPath:
+    if not value or "\\" in value:
+        raise ValueError("path must be a non-empty POSIX path")
+    path = PurePosixPath(value)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        raise ValueError("path must be normalized and repository-relative")
+    return path
+
+
+def safe_join(root: Path, value: str) -> Path:
+    relative = safe_relative_path(value)
+    candidate = root.joinpath(*relative.parts)
+    try:
+        candidate.resolve().relative_to(root.resolve())
+    except ValueError as error:
+        raise ValueError("path escapes declared root") from error
+    return candidate
+
+
+def reject_symlink(path: Path) -> None:
+    current = path
+    while True:
+        if current.is_symlink():
+            raise ValueError(f"symbolic link is forbidden: {path}")
+        if current == current.parent:
+            break
+        current = current.parent
+
+
+def _replace_roots(value: str, workspace: Path, task_root: Path) -> str:
+    replacements = sorted(
+        ((str(workspace), "{workspace}"), (str(task_root), "{task_root}")),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+    result = value
+    for source, replacement in replacements:
+        result = result.replace(source, replacement)
+    return result.replace(os.sep, "/") if os.sep != "/" else result
+
+
+def canonical_command_record(record: dict[str, Any], workspace: Path, task_root: Path) -> dict[str, Any]:
+    value = json.loads(json.dumps(record))
+    value["started_at"] = EPOCH_TEXT
+    value["finished_at"] = EPOCH_TEXT
+    value["duration_ms"] = 0
+    value["cwd"] = _replace_roots(str(value["cwd"]), workspace, task_root)
+    value["argv"] = [
+        _replace_roots(str(argument), workspace, task_root) for argument in value["argv"]
+    ]
+    value["environment"] = {
+        key: _replace_roots(str(item), workspace, task_root)
+        for key, item in sorted(value["environment"].items())
+    }
+    return value
+
+
+def canonical_trace_event(event: dict[str, Any], workspace: Path, task_root: Path) -> dict[str, Any]:
+    value = json.loads(json.dumps(event))
+    value["timestamp"] = EPOCH_TEXT
+
+    def normalize(item: Any) -> Any:
+        if isinstance(item, str):
+            return _replace_roots(item, workspace, task_root)
+        if isinstance(item, dict):
+            return {key: normalize(child) for key, child in sorted(item.items())}
+        if isinstance(item, list):
+            return [normalize(child) for child in item]
+        return item
+
+    value["payload"] = normalize(value["payload"])
+    return value
+
+
+def canonical_attempt(attempt: dict[str, Any]) -> dict[str, Any]:
+    value = json.loads(json.dumps(attempt))
+    value["started_at"] = EPOCH_TEXT
+    value["finished_at"] = EPOCH_TEXT
+    value["usage"]["wall_clock_ms"] = 0
+    return value
+
+
+def write_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(canonical_json(value), encoding="utf-8")
+
+
+def write_jsonl(path: Path, values: Iterable[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        for value in values:
+            handle.write(json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")))
+            handle.write("\n")
+
+
+def build_manifest(
+    canonical_root: Path,
+    *,
+    task_id: str,
+    language: str,
+    adapter: str,
+) -> dict[str, Any]:
+    files: dict[str, dict[str, Any]] = {}
+    for path in sorted(item for item in canonical_root.rglob("*") if item.is_file()):
+        relative = path.relative_to(canonical_root).as_posix()
+        if relative == "bundle-manifest.json":
+            continue
+        files[relative] = {
+            "sha256": sha256_file(path),
+            "size_bytes": path.stat().st_size,
+        }
+    semantic_payload = {
+        "bundle_kind": "trusted-conformance",
+        "task_id": task_id,
+        "language": language,
+        "adapter": adapter,
+        "files": files,
+    }
+    manifest = {
+        "document_kind": "axiom.bench.bundle-manifest",
+        "schema_version": "0.1.0",
+        **semantic_payload,
+        "semantic_sha256": semantic_sha256(semantic_payload),
+    }
+    write_json(canonical_root / "bundle-manifest.json", manifest)
+    return manifest
+
+
+def write_deterministic_zip(source: Path, destination: Path) -> str:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.unlink(missing_ok=True)
+    with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for path in sorted(item for item in source.rglob("*") if item.is_file()):
+            relative = path.relative_to(source).as_posix()
+            safe_relative_path(relative)
+            info = zipfile.ZipInfo(relative, FIXED_TIME)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o100644 << 16
+            archive.writestr(info, path.read_bytes())
+    with zipfile.ZipFile(destination, "r") as archive:
+        if archive.testzip() is not None:
+            raise ValueError("deterministic ZIP CRC verification failed")
+    return sha256_file(destination)
+
+
+def safe_zip_entries(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
+    entries = archive.infolist()
+    if len(entries) > MAX_REPLAY_ENTRIES:
+        raise ValueError("ZIP entry count exceeds replay limit")
+    names: set[str] = set()
+    total = 0
+    for entry in entries:
+        path = safe_relative_path(entry.filename)
+        if entry.filename in names:
+            raise ValueError(f"duplicate ZIP path: {entry.filename}")
+        names.add(entry.filename)
+        if entry.file_size > MAX_REPLAY_ENTRY_BYTES:
+            raise ValueError(f"ZIP entry exceeds replay limit: {entry.filename}")
+        total += entry.file_size
+        if total > MAX_REPLAY_TOTAL_BYTES:
+            raise ValueError("ZIP total size exceeds replay limit")
+        mode = entry.external_attr >> 16
+        if mode and stat.S_ISLNK(mode):
+            raise ValueError(f"ZIP symbolic link is forbidden: {path}")
+    return entries
