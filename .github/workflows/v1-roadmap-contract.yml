@@ -1,0 +1,55 @@
+name: AXIOM v1 roadmap contract
+
+on:
+  pull_request:
+    paths:
+      - "roadmap/**"
+      - "tools/check_v1_roadmap.py"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/pull_request_template.md"
+      - ".github/workflows/v1-roadmap-contract.yml"
+      - "README.md"
+      - "V1_TRACKING.md"
+      - "MVP_ROADMAP.md"
+      - "AI_FIRST_MVP_CONTRACT.md"
+      - "ROADMAP_AMENDMENT_007.md"
+  push:
+    branches:
+      - main
+    paths:
+      - "roadmap/**"
+      - "tools/check_v1_roadmap.py"
+      - "README.md"
+      - "V1_TRACKING.md"
+      - "MVP_ROADMAP.md"
+      - "AI_FIRST_MVP_CONTRACT.md"
+      - "ROADMAP_AMENDMENT_007.md"
+  issues:
+    types: [opened, edited, closed, reopened, assigned, unassigned, labeled, unlabeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: v1-roadmap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  roadmap-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Validate local and live GitHub roadmap state
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/check_v1_roadmap.py --github

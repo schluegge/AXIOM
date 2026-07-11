@@ -1,0 +1,118 @@
+name: AXIOM capability
+description: Propose one vertically complete language, compiler, tooling, benchmark, or standard-library capability.
+title: "[CAPABILITY] "
+labels:
+  - enhancement
+assignees:
+  - schluegge
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every AXIOM capability must remove a real blocker, target one milestone, define a falsifiable AI-development hypothesis, and preserve the one-active-language-front rule.
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Target milestone
+      description: Select the single milestone that owns this work.
+      options:
+        - M0 — Project authority and consistency
+        - M1 — AXIOM-Bench seed
+        - M2 — Rust bootstrap parity
+        - M3 — Compiler interaction protocol
+        - M4 — Scalar completeness
+        - M5 — Variants and typed failure
+        - M6 — Minimal generics
+        - M7 — Ownership and destruction
+        - M8 — Bytes, slices, strings, lists
+        - M9 — Modules and projects
+        - M10 — Effects and capabilities
+        - M11 — Standard library and JSON
+        - M12 — Golden applications and hardening
+        - M13 — Frozen holdout decision
+        - Post-v1 — explicitly deferred work
+    validations:
+      required: true
+
+  - type: input
+    id: parent
+    attributes:
+      label: Parent milestone issue
+      description: Use one issue number from #11 through #24, or #25 for release work.
+      placeholder: "#11"
+    validations:
+      required: true
+
+  - type: textarea
+    id: blocker
+    attributes:
+      label: Real program blocker
+      description: Name the concrete program or workflow that cannot be completed correctly without this capability.
+    validations:
+      required: true
+
+  - type: textarea
+    id: ai_failure
+    attributes:
+      label: AI failure class and falsifiable hypothesis
+      description: State the observed AI-development failure and the measurable result expected from this capability.
+      placeholder: "Failure: ...\nHypothesis: under ... AXIOM will ... compared with ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: source_evidence
+    attributes:
+      label: Required source evidence
+      description: List external APIs, ABIs, file formats, compiler contracts, or tools requiring official evidence. Write NONE only when genuinely self-contained.
+    validations:
+      required: true
+
+  - type: textarea
+    id: semantics
+    attributes:
+      label: Normative semantic impact
+      description: Cover grammar, typing, names, evaluation order, effects, ownership, runtime behavior, diagnostics, formatter, target scope, and non-goals as applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: vertical
+    attributes:
+      label: Vertical implementation surface
+      description: List every affected compiler/runtime/protocol/document stage. No placeholder stages.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proof
+    attributes:
+      label: Proof and benchmark plan
+      description: Include valid, invalid, boundary, adversarial, generated, differential, regression, exact-PR Evidence, and benchmark-delta requirements.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Explicit non-goals
+      description: State adjacent features that this issue must not absorb.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: laws
+    attributes:
+      label: AXIOM development laws
+      options:
+        - label: This is one vertically complete capability, not a broad phase dump.
+          required: true
+        - label: Required external contracts will be sourced before implementation; otherwise work stops with BLOCKED_SOURCE_MISSING.
+          required: true
+        - label: Tests and benchmarks will not be weakened after results are observed.
+          required: true
+        - label: Historical benchmark versions and negative findings will be preserved.
+          required: true
+        - label: No deferred post-v1 feature is introduced implicitly.
+          required: true
