@@ -45,7 +45,7 @@ def _require_code(result: dict[str, Any], code: str) -> str:
 def _valid_contract(root: Path) -> dict[str, Any]:
     result = check_project_contract(root)
     require(result["status"] == "passed", f"valid repository contract failed: {result}")
-    require(result["counts"]["current_features"] == 6, "unexpected current feature count")
+    require(result["counts"]["current_features"] == 7, "unexpected current feature count")
     require(result["counts"]["findings"] == 0, "valid contract contains findings")
     return {
         "features": result["counts"]["current_features"],
