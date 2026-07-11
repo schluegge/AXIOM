@@ -1,0 +1,38 @@
+{
+  "$schema": "./v1.schema.json",
+  "schema_version": "1.0.0",
+  "release": "v1.0.0",
+  "program_issue": 9,
+  "release_gate_issue": 25,
+  "active_milestone": "M0",
+  "canonical_documents": [
+    "MVP_ROADMAP.md",
+    "AI_FIRST_MVP_CONTRACT.md",
+    "ROADMAP_AMENDMENT_007.md",
+    "CONTEXT7_MVP_DESIGN_EVIDENCE.md"
+  ],
+  "milestones": [
+    {"id":"M0","issue":11,"depends_on":null,"status":"active","title_prefix":"M0:","next":"M1"},
+    {"id":"M1","issue":12,"depends_on":"M0","status":"blocked","title_prefix":"M1:","next":"M2"},
+    {"id":"M2","issue":13,"depends_on":"M1","status":"blocked","title_prefix":"M2:","next":"M3"},
+    {"id":"M3","issue":14,"depends_on":"M2","status":"blocked","title_prefix":"M3:","next":"M4"},
+    {"id":"M4","issue":15,"depends_on":"M3","status":"blocked","title_prefix":"M4:","next":"M5"},
+    {"id":"M5","issue":16,"depends_on":"M4","status":"blocked","title_prefix":"M5:","next":"M6"},
+    {"id":"M6","issue":17,"depends_on":"M5","status":"blocked","title_prefix":"M6:","next":"M7"},
+    {"id":"M7","issue":18,"depends_on":"M6","status":"blocked","title_prefix":"M7:","next":"M8"},
+    {"id":"M8","issue":19,"depends_on":"M7","status":"blocked","title_prefix":"M8:","next":"M9"},
+    {"id":"M9","issue":20,"depends_on":"M8","status":"blocked","title_prefix":"M9:","next":"M10"},
+    {"id":"M10","issue":21,"depends_on":"M9","status":"blocked","title_prefix":"M10:","next":"M11"},
+    {"id":"M11","issue":22,"depends_on":"M10","status":"blocked","title_prefix":"M11:","next":"M12"},
+    {"id":"M12","issue":23,"depends_on":"M11","status":"blocked","title_prefix":"M12:","next":"M13"},
+    {"id":"M13","issue":24,"depends_on":"M12","status":"blocked","title_prefix":"M13:","next":"V1"}
+  ],
+  "release_gate": {
+    "id": "V1",
+    "issue": 25,
+    "depends_on": "M13",
+    "status": "blocked",
+    "title_prefix": "AXIOM v1.0 release gate:"
+  },
+  "post_v1_issues": [8]
+}
