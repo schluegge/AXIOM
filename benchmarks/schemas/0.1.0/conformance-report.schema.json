@@ -37,11 +37,11 @@
       "required": ["full_success", "failure_reason"],
       "properties": {
         "full_success": {"type": "boolean"},
-        "failure_reason": {"type": ["string", "null"]}
+        "failure_reason": {"$ref": "#/$defs/failureReason"}
       }
     },
     "actual_full_success": {"type": "boolean"},
-    "actual_failure_reason": {"type": ["string", "null"]},
+    "actual_failure_reason": {"$ref": "#/$defs/failureReason"},
     "conformance_passed": {"type": "boolean"},
     "attempt_path": {"type": "string", "minLength": 1},
     "attempt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
@@ -60,6 +60,27 @@
           "message": {"type": "string", "minLength": 1}
         }
       }
+    }
+  },
+  "$defs": {
+    "failureReason": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "invalid_completion",
+        "invalid_patch",
+        "forbidden_file",
+        "forbidden_dependency",
+        "format_failure",
+        "compile_failure",
+        "public_test_failure",
+        "acceptance_test_failure",
+        "security_failure",
+        "timeout",
+        "resource_limit",
+        "sandbox_required",
+        "runner_error"
+      ]
     }
   }
 }
