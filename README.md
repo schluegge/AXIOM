@@ -10,14 +10,17 @@ The first product target is deliberately focused:
 safe deterministic local CLI and structured-data tools
 ```
 
-The canonical path to that product is defined by:
+The canonical path to AXIOM v1.0 is defined by:
 
 - `MVP_ROADMAP.md`
 - `AI_FIRST_MVP_CONTRACT.md`
-- tracking issue #9
+- `V1_TRACKING.md`
+- machine-readable graph `roadmap/v1.json`
+- GitHub program issue #9
+- GitHub release gate #25
 
 AXIOM will not claim to be measurably better for AI-driven development merely
-because its own tests pass. The MVP claim requires a preregistered comparison
+because its own tests pass. The v1 claim requires a preregistered comparison
 against Rust, Zig, and Go with preserved prompts, failures, traces, hidden tests,
 and statistical evidence.
 
@@ -89,34 +92,41 @@ checks, and reproducibility-sensitive Evidence generation. It creates:
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
 
-## MVP direction
+## Ordered path to v1.0
 
-The current v0.7 semantics are frozen while the MVP foundation is established.
-The ordered roadmap is:
+The current v0.7 semantics are frozen while the v1 foundation is established.
+Every milestone has a dedicated GitHub issue and a mechanical exit gate:
 
-1. canonical project/document contracts and v0.7 consistency proof;
-2. contamination-aware benchmark seed;
-3. Rust bootstrap parity for v0.7;
-4. stable compiler/agent interaction protocol;
-5. complete scalar and conversion foundation;
-6. algebraic variants, exhaustive matching, `Option`, and `Result`;
-7. minimal generics;
-8. moves, ownership, and deterministic destruction;
-9. bytes, slices, UTF-8 strings, and lists;
-10. modules, visibility, manifest, and lockfile;
-11. declared external effects and capabilities;
-12. minimal standard library and JSON;
-13. complete Windows/Linux golden applications;
-14. frozen holdout benchmark and release decision.
+1. M0 / #11 — project authority and v0.7 consistency;
+2. M1 / #12 — contamination-aware AXIOM-Bench seed;
+3. M2 / #13 — independent Rust bootstrap parity for v0.7;
+4. M3 / #14 — stable compiler and agent interaction protocol;
+5. M4 / #15 — scalar and explicit-conversion foundation;
+6. M5 / #16 — algebraic variants, exhaustive matching, `Option`, and `Result`;
+7. M6 / #17 — minimal monomorphized generics;
+8. M7 / #18 — moves, ownership, and deterministic destruction;
+9. M8 / #19 — bytes, slices, UTF-8 strings, and lists;
+10. M9 / #20 — modules, visibility, manifest, and lockfile;
+11. M10 / #21 — declared external effects and least-authority capabilities;
+12. M11 / #22 — minimal standard library and deterministic JSON;
+13. M12 / #23 — golden applications, Windows/Linux proof, and hardening;
+14. M13 / #24 — frozen holdout benchmark and release decision;
+15. V1 / #25 — stable `v1.0.0` release and compatibility gate.
 
-Exactly one language capability may be active at a time. User-visible raw
-pointers and general-purpose `unsafe` are intentionally post-MVP because they do
-not unlock the first product domain.
+Exactly one language milestone may be active at a time. The repository action
+`.github/workflows/v1-roadmap-contract.yml` verifies the machine-readable graph
+and live GitHub issue state. New capabilities and pull requests use mandatory
+GitHub forms/templates that require source evidence, normative semantics,
+vertical proof, benchmark deltas, and exact-PR Evidence.
+
+User-visible raw pointers and general-purpose `unsafe` remain explicitly
+post-v1 because they do not unlock the first product domain.
 
 ## Governing semantics and process
 
 - `MVP_ROADMAP.md`
 - `AI_FIRST_MVP_CONTRACT.md`
+- `V1_TRACKING.md`
 - `ROADMAP_AMENDMENT_007.md`
 - `ARITHMETIC_SEMANTICS.md`
 - `AGGREGATE_SEMANTICS.md`
@@ -129,8 +139,7 @@ not unlock the first product domain.
 
 ## Current proof boundary
 
-This is an executable semantics oracle, not the AXIOM MVP and not AXIOM 1.0. It
-does not yet prove:
+This is an executable semantics oracle, not AXIOM v1.0. It does not yet prove:
 
 - the Rust bootstrap compiler;
 - algebraic variants, `Option`, or `Result`;
@@ -140,11 +149,10 @@ does not yet prove:
 - slices, bytes, or UTF-8 strings;
 - modules, manifests, or lockfiles;
 - local I/O capability enforcement;
-- the MVP standard library or JSON support;
+- the v1 standard library or JSON support;
 - Windows target parity;
 - the external AI-first benchmark claim;
-- raw pointers, `unsafe`, reborrowing, non-lexical lifetimes, or reference
-  returns/fields;
+- raw pointers, `unsafe`, reborrowing, non-lexical lifetimes, or reference returns/fields;
 - broad platform ABI stability;
 - networking, concurrency, GPU execution, LSP, package ecosystem, self-hosting,
-  or AXIOM 1.0.
+  or universal systems-language completeness.
