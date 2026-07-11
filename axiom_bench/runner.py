@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import difflib
 import json
+import math
 import re
-import shutil
 import sys
 import tempfile
 import time
@@ -16,7 +16,6 @@ from .bundle import (
     build_manifest,
     canonical_attempt,
     canonical_command_record,
-    canonical_json,
     canonical_trace_event,
     safe_join,
     sha256_bytes,
@@ -26,7 +25,7 @@ from .bundle import (
     write_jsonl,
 )
 from .contract import validate_document
-from .executor import execute_bounded, minimal_environment
+from .executor import ExecutionResult, execute_bounded, minimal_environment
 
 Language = Literal["axiom", "rust", "zig", "go"]
 Adapter = Literal["reference", "seeded_wrong"]
@@ -104,7 +103,11 @@ def _load_json(path: Path) -> dict[str, Any]:
         value = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
         raise RunnerError(
-            "AX-BENCH-RUNNER-INVALID-TASK", path.as_posix(), "task JSON does not exist"
+            "AX-BENCH-RUNNER-INVALID-TASK", path.as_posix(), "JSON file does not exist"
+        ) from error
+    except (OSError, UnicodeError) as error:
+        raise RunnerError(
+            "AX-BENCH-RUNNER-INVALID-TASK", path.as_posix(), f"cannot read JSON file: {error}"
         ) from error
     except json.JSONDecodeError as error:
         raise RunnerError(
@@ -114,7 +117,7 @@ def _load_json(path: Path) -> dict[str, Any]:
         ) from error
     if not isinstance(value, dict):
         raise RunnerError(
-            "AX-BENCH-RUNNER-INVALID-TASK", path.as_posix(), "task root must be an object"
+            "AX-BENCH-RUNNER-INVALID-TASK", path.as_posix(), "JSON root must be an object"
         )
     return value
 
@@ -145,12 +148,12 @@ def _source_file(task_root: Path, relative: str, label: str) -> Path:
     except ValueError as error:
         raise RunnerError("AX-BENCH-RUNNER-INVALID-PATH", label, str(error)) from error
     current = path
-    while current != task_root.parent:
+    while True:
         if current.is_symlink():
             raise RunnerError(
                 "AX-BENCH-RUNNER-SYMLINK", label, f"symbolic link is forbidden: {relative}"
             )
-        if current == task_root:
+        if current == task_root or current == current.parent:
             break
         current = current.parent
     if not path.is_file():
@@ -165,6 +168,30 @@ def _workspace_file(workspace: Path, relative: str, label: str) -> Path:
         return safe_join(workspace, relative)
     except ValueError as error:
         raise RunnerError("AX-BENCH-RUNNER-INVALID-PATH", label, str(error)) from error
+
+
+def _prepare_output_directory(
+    output_directory: Path, repository_root: Path, task_root: Path
+) -> Path:
+    output = output_directory.resolve()
+    if output.exists():
+        raise RunnerError(
+            "AX-BENCH-RUNNER-INVALID-PATH",
+            "output_directory",
+            "output directory must not already exist",
+        )
+    for protected, label in ((repository_root, "repository"), (task_root, "task root")):
+        try:
+            output.relative_to(protected)
+        except ValueError:
+            continue
+        raise RunnerError(
+            "AX-BENCH-RUNNER-INVALID-PATH",
+            "output_directory",
+            f"output directory may not be inside the {label}",
+        )
+    output.mkdir(parents=True)
+    return output
 
 
 def expand_command(
@@ -186,7 +213,7 @@ def expand_command(
     for index, argument in enumerate(command):
         names = _PLACEHOLDER.findall(argument)
         unknown = sorted(set(names) - _FIXED_PLACEHOLDERS)
-        if unknown or ("{" in argument or "}" in argument) and not names:
+        if unknown or (("{" in argument or "}" in argument) and not names):
             raise RunnerError(
                 "AX-BENCH-RUNNER-UNKNOWN-PLACEHOLDER",
                 f"command[{index}]",
@@ -210,17 +237,13 @@ def expand_command(
 def _changed_lines(before: bytes, after: bytes) -> int:
     left = before.decode("utf-8", errors="replace").splitlines()
     right = after.decode("utf-8", errors="replace").splitlines()
-    count = 0
-    for line in difflib.ndiff(left, right):
-        if line.startswith("+ ") or line.startswith("- "):
-            count += 1
-    return count
+    return sum(1 for line in difflib.ndiff(left, right) if line.startswith(("+ ", "- ")))
 
 
 def _command_record(
     command_id: str,
     phase: str,
-    execution: Any,
+    execution: ExecutionResult,
     *,
     stdout_path: str,
     stderr_path: str,
@@ -247,6 +270,26 @@ def _command_record(
         "stderr_sha256": sha256_bytes(execution.stderr),
         "stderr_bytes": len(execution.stderr),
     }
+
+
+def _not_started_execution(
+    argv: list[str], workspace: Path, environment: dict[str, str], error: Exception
+) -> ExecutionResult:
+    now = _utc_now()
+    return ExecutionResult(
+        argv=tuple(argv),
+        cwd=str(workspace),
+        environment=dict(sorted(environment.items())),
+        started_at=now,
+        finished_at=now,
+        duration_ms=0,
+        return_code=None,
+        timed_out=False,
+        output_limited=False,
+        termination="not_started",
+        stdout=b"",
+        stderr=(f"{type(error).__name__}: {error}\n").encode("utf-8", errors="replace"),
+    )
 
 
 def _write_trace(
@@ -298,7 +341,13 @@ def run_conformance(
     trust_class = "trusted_reference" if adapter == "reference" else "trusted_seeded_wrong"
     assert_local_trust(trust_class)
     variant = task["variants"][language]
-    candidate_relative = variant["candidate_path"]
+    candidate_relative = variant.get("candidate_path")
+    if not isinstance(candidate_relative, str) or not candidate_relative:
+        raise RunnerError(
+            "AX-BENCH-RUNNER-INVALID-TASK",
+            "candidate_path",
+            "runner task variant must declare candidate_path",
+        )
     if candidate_relative not in task["candidate_edit_allowlist"]:
         raise RunnerError(
             "AX-BENCH-RUNNER-FORBIDDEN-FILE",
@@ -337,13 +386,11 @@ def run_conformance(
             "AX-BENCH-RUNNER-BUDGET", "candidate", "candidate file budget is zero"
         )
 
-    output_directory = output_directory.resolve()
-    if output_directory.exists():
-        shutil.rmtree(output_directory)
+    output_directory = _prepare_output_directory(output_directory, repository_root, task_root)
     raw_root = output_directory / "raw"
     canonical_root = output_directory / "canonical"
-    raw_root.mkdir(parents=True)
-    canonical_root.mkdir(parents=True)
+    raw_root.mkdir()
+    canonical_root.mkdir()
     (raw_root / "candidate.bin").write_bytes(candidate_bytes)
     (canonical_root / "candidate.bin").write_bytes(candidate_bytes)
 
@@ -399,6 +446,21 @@ def run_conformance(
             if phase == "security_test" and not command:
                 outcomes["security_success"] = True
                 continue
+
+            elapsed = time.monotonic() - started_monotonic
+            remaining = budgets["task_timeout_seconds"] - elapsed
+            if remaining <= 0:
+                failure_reason = "timeout"
+                trace.add("timeout", {"scope": "task", "phase": phase})
+                break
+            if len(command_references) >= budgets["max_compiler_invocations"]:
+                failure_reason = "resource_limit"
+                trace.add(
+                    "budget_exhausted",
+                    {"budget": "max_compiler_invocations", "phase": phase},
+                )
+                break
+
             argv = expand_command(
                 command,
                 workspace=workspace,
@@ -408,21 +470,32 @@ def run_conformance(
             )
             command_id = f"c{index:02d}.{phase.replace('_', '-')}"
             trace.add("command_start", {"command_id": command_id, "phase": phase, "argv": argv})
-            execution = execute_bounded(
-                argv,
-                cwd=workspace,
-                environment=environment,
-                timeout_seconds=budgets["command_timeout_seconds"],
-                max_output_bytes=budgets["max_output_bytes"],
-            )
+            start_failed = False
+            try:
+                execution = execute_bounded(
+                    argv,
+                    cwd=workspace,
+                    environment=environment,
+                    timeout_seconds=min(
+                        budgets["command_timeout_seconds"], max(1, math.ceil(remaining))
+                    ),
+                    max_output_bytes=budgets["max_output_bytes"],
+                )
+            except (OSError, ValueError) as error:
+                execution = _not_started_execution(argv, workspace, environment, error)
+                start_failed = True
+
             stdout_relative = f"stdout/{command_id}.bin"
             stderr_relative = f"stderr/{command_id}.bin"
-            (raw_root / stdout_relative).parent.mkdir(parents=True, exist_ok=True)
-            (canonical_root / stdout_relative).parent.mkdir(parents=True, exist_ok=True)
-            (raw_root / stdout_relative).write_bytes(execution.stdout)
-            (raw_root / stderr_relative).write_bytes(execution.stderr)
-            (canonical_root / stdout_relative).write_bytes(execution.stdout)
-            (canonical_root / stderr_relative).write_bytes(execution.stderr)
+            for root, relative, payload in (
+                (raw_root, stdout_relative, execution.stdout),
+                (raw_root, stderr_relative, execution.stderr),
+                (canonical_root, stdout_relative, execution.stdout),
+                (canonical_root, stderr_relative, execution.stderr),
+            ):
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(payload)
             feedback_bytes += len(execution.stdout) + len(execution.stderr)
 
             raw_record = _command_record(
@@ -453,13 +526,26 @@ def run_conformance(
                     "return_code": execution.return_code,
                     "timed_out": execution.timed_out,
                     "output_limited": execution.output_limited,
+                    "termination": execution.termination,
                 },
             )
 
-            if execution.timed_out:
+            if start_failed:
+                failure_reason = "runner_error"
+            elif execution.timed_out or time.monotonic() - started_monotonic > budgets["task_timeout_seconds"]:
                 failure_reason = "timeout"
             elif execution.output_limited:
                 failure_reason = "resource_limit"
+            elif feedback_bytes > budgets["max_feedback_bytes"]:
+                failure_reason = "resource_limit"
+                trace.add(
+                    "budget_exhausted",
+                    {
+                        "budget": "max_feedback_bytes",
+                        "actual": feedback_bytes,
+                        "limit": budgets["max_feedback_bytes"],
+                    },
+                )
             elif execution.return_code != 0:
                 failure_reason = phase_failure
 
@@ -501,8 +587,7 @@ def run_conformance(
         )
         expected_success = adapter == "reference"
         conformance_passed = (
-            outcomes["full_success"] is expected_success
-            and failure_reason == expected_failure
+            outcomes["full_success"] is expected_success and failure_reason == expected_failure
         )
         findings: list[RunnerFinding] = []
         if not conformance_passed:
@@ -565,7 +650,9 @@ def run_conformance(
                 "token_source": None,
                 "tool_calls": 0,
                 "compiler_invocations": len(command_references),
-                "wall_clock_ms": max(0, int(round((time.monotonic() - started_monotonic) * 1000))),
+                "wall_clock_ms": max(
+                    0, int(round((time.monotonic() - started_monotonic) * 1000))
+                ),
                 "feedback_bytes": feedback_bytes,
             },
             "mutations": {
