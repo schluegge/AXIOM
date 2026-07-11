@@ -1,0 +1,164 @@
++                reference.location.selectors,
++                reference.mutable,
++            )
+         if target.kind == "FieldExpr":
+-            root, selectors = self.resolve_lvalue(target.fields["base"], environment)
+-            return root, [*selectors, ("field", target.fields["field"])]
++            base = self.resolve_lvalue(target.fields["base"], environment)
++            return RuntimeLocation(
++                base.environment,
++                base.root_name,
++                (*base.selectors, ("field", target.fields["field"])),
++                base.mutable,
++            )
+         if target.kind == "IndexExpr":
+-            root, selectors = self.resolve_lvalue(target.fields["base"], environment)
++            base = self.resolve_lvalue(target.fields["base"], environment)
+             index = self.eval_expr(target.fields["index"], environment)
+-            return root, [*selectors, ("index", index)]
++            return RuntimeLocation(
++                base.environment,
++                base.root_name,
++                (*base.selectors, ("index", index)),
++                base.mutable,
++            )
+         raise RuntimeError(f"AX-RUNTIME-MUT-0001: unsupported l-value {target.kind}")
+ 
++    def read_path(self, current: Any, selectors: tuple[tuple[str, Any], ...]) -> Any:
++        for kind, key in selectors:
++            if kind == "field":
++                if not isinstance(current, StructValue):
++                    raise RuntimeError("AX-RUNTIME-STRUCT-0002: field access on non-struct value")
++                current = current.get(key)
++            elif kind == "index":
++                if not isinstance(current, ArrayValue):
++                    raise RuntimeError("AX-RUNTIME-INDEX-0002: index access on non-array value")
++                if not 0 <= key < len(current.items):
++                    raise array_index_out_of_bounds(key, len(current.items))
++                current = current.items[key]
++            else:
++                raise RuntimeError(f"AX-RUNTIME-MUT-0002: unsupported l-value selector {kind}")
++        return current
++
++    def read_location(self, location: RuntimeLocation) -> Any:
++        return self.read_path(
++            location.environment.get(location.root_name),
++            location.selectors,
++        )
++
+     def replace_path(
+         self,
+         current: Any,
+-        selectors: list[tuple[str, Any]],
++        selectors: tuple[tuple[str, Any], ...],
+         replacement: Any,
+     ) -> Any:
+         if not selectors:
+@@ -199,15 +257,22 @@ class Interpreter:
+             return current.with_item(key, updated)
+         raise RuntimeError(f"AX-RUNTIME-MUT-0002: unsupported l-value selector {kind}")
+ 
++    def assign_location(self, location: RuntimeLocation, value: Any) -> None:
++        if not location.mutable:
++            raise RuntimeError("AX-RUNTIME-REF-0002: write through immutable location")
++        root_value = location.environment.get(location.root_name)
++        location.environment.assign(
++            location.root_name,
++            self.replace_path(root_value, location.selectors, value),
++        )
++
+     def assign_lvalue(
+         self,
+         target: Node,
+         value: Any,
+         environment: RuntimeEnvironment,
+     ) -> None:
+-        root_name, selectors = self.resolve_lvalue(target, environment)
+-        root_value = environment.get(root_name)
+-        environment.assign(root_name, self.replace_path(root_value, selectors, value))
++        self.assign_location(self.resolve_lvalue(target, environment), value)
+ 
+     def eval_expr(self, expression: Node, environment: RuntimeEnvironment) -> Any:
+         self.tick()
+@@ -215,6 +280,17 @@ class Interpreter:
+             return expression.fields["value"]
+         if expression.kind == "NameExpr":
+             return environment.get(expression.fields["name"])
++        if expression.kind == "BorrowExpr":
++            location = self.resolve_lvalue(expression.fields["target"], environment)
++            mutable = bool(expression.fields["mutable"])
++            if mutable and not location.mutable:
++                raise RuntimeError("AX-RUNTIME-REF-0003: mutable borrow of immutable location")
++            return RuntimeReference(location, mutable)
++        if expression.kind == "DerefExpr":
++            reference = self.eval_expr(expression.fields["reference"], environment)
++            if not isinstance(reference, RuntimeReference):
++                raise RuntimeError("AX-RUNTIME-REF-0001: dereference requires a reference")
++            return self.read_location(reference.location)
+         if expression.kind == "CallExpr":
+             return self.call(
+                 expression.fields["callee"],
+diff --git a/axiom_proof/layout.py b/axiom_proof/layout.py
+index 4b59a5226e927d51e901d0b4e07ae590f6d97c63..a6a3e0274218d9a8f60a4259ce4db5a2a433bd0e 100644
+--- a/axiom_proof/layout.py
++++ b/axiom_proof/layout.py
+@@ -112,7 +112,7 @@ class LayoutEngine:
+     def document(self, type_name: str) -> dict[str, Any]:
+         return {
+             "document_kind": "axiom.layout",
+-            "schema_version": "0.6.0",
++            "schema_version": "0.7.0",
+             "target": self.target,
+             "representation": "axiom_natural_c_compatible_subset_v0",
+             "layout": self.layout(type_name).to_dict(),
+diff --git a/axiom_proof/lexer.py b/axiom_proof/lexer.py
+index 8cb2e30c906c1a6a36beb2a855e4b4d286f3d845..48088c619a1e8ce585d07639c902aa72b8cceccc 100644
+--- a/axiom_proof/lexer.py
++++ b/axiom_proof/lexer.py
+@@ -5,7 +5,7 @@ from .source import SourceFile
+ 
+ KEYWORDS = {
+     word: word
+-    for word in "profile import fn extern struct enum let var return while if else true false".split()
++    for word in "profile import fn extern struct enum let var mut return while if else true false".split()
+ }
+ 
+ PAIRS = {
+diff --git a/axiom_proof/llvm_backend.py b/axiom_proof/llvm_backend.py
+index 2b13c9c18cbbcf7b7104b68f40b0fd4324e09074..079d6e4b6dcda96e52446b2e691e38957516bf40 100644
+--- a/axiom_proof/llvm_backend.py
++++ b/axiom_proof/llvm_backend.py
+@@ -9,6 +9,7 @@ from .llvm_model import FunctionContext, Storage
+ from .llvm_support import LLVMSupportMixin
+ from .llvm_expressions import LLVMExpressionMixin
+ from .llvm_scalar_expressions import LLVMScalarExpressionMixin
++from .llvm_reference_expressions import LLVMReferenceExpressionMixin
+ from .llvm_aggregate_expressions import LLVMAggregateExpressionMixin
+ from .llvm_binary_expressions import LLVMBinaryExpressionMixin
+ from .llvm_arithmetic import LLVMArithmeticMixin
+@@ -20,6 +21,7 @@ class LLVMBackend(
+     LLVMSupportMixin,
+     LLVMArithmeticMixin,
+     LLVMScalarExpressionMixin,
++    LLVMReferenceExpressionMixin,
+     LLVMAggregateExpressionMixin,
+     LLVMBinaryExpressionMixin,
+     LLVMExpressionMixin,
+diff --git a/axiom_proof/llvm_expressions.py b/axiom_proof/llvm_expressions.py
+index 42f80707f4ad7d7ae11bdc246bf56f24a261ba1b..092829b8130f86a17cf1b580f7eadba7dc9a8d1a 100644
+--- a/axiom_proof/llvm_expressions.py
++++ b/axiom_proof/llvm_expressions.py
+@@ -15,6 +15,8 @@ class LLVMExpressionMixin:
+             return self.emit_scalar_expr(expression, environment, context)
+         if expression.kind in {"StructLiteral", "ArrayLiteral", "FieldExpr", "IndexExpr"}:
+             return self.emit_aggregate_expr(expression, environment, context)
++        if expression.kind in {"BorrowExpr", "DerefExpr"}:
++            return self.emit_reference_expr(expression, environment, context)
+         if expression.kind == "BinaryExpr":
+             return self.emit_binary_expr(expression, environment, context)
+         raise ValueError(f"unsupported LLVM expression: {expression.kind}")
+diff --git a/axiom_proof/llvm_lvalues.py b/axiom_proof/llvm_lvalues.py
+index ca1bd090bb7197f04234291e5dbc445e254dca39..e5afadc8c59213090881f7f3842d50f26e4ba8d0 100644
+--- a/axiom_proof/llvm_lvalues.py
++++ b/axiom_proof/llvm_lvalues.py
+@@ -3,7 +3,7 @@ from __future__ import annotations
