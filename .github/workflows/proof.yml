@@ -25,6 +25,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install proof dependencies
+        run: python3 -m pip install --disable-pip-version-check -r requirements-proof.txt
+
       - name: Install Clang
         run: |
           sudo apt-get update
@@ -34,6 +37,11 @@ jobs:
         run: |
           python3 --version
           clang --version
+          python3 - <<'PY'
+          from importlib.metadata import version
+          for name in ["jsonschema", "attrs", "jsonschema-specifications", "referencing", "rpds-py"]:
+              print(f"{name}=={version(name)}")
+          PY
 
       - name: Run release-blocking repository proof
         shell: bash
