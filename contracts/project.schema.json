@@ -67,7 +67,7 @@
         "name": {"const": "AXIOM"},
         "repository": {"const": "schluegge/AXIOM"},
         "program_issue": {"const": 9},
-        "active_milestone": {"const": "M0"},
+        "active_milestone": {"type": "string", "pattern": "^M(?:[0-9]|1[0-3])$"},
         "roadmap_contract": {"const": "roadmap/v1.json"}
       }
     },
