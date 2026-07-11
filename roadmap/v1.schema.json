@@ -34,19 +34,7 @@
       "maxItems": 14,
       "items": {"$ref": "#/$defs/milestone"}
     },
-    "release_gate": {
-      "allOf": [
-        {"$ref": "#/$defs/trackedIssue"},
-        {
-          "type": "object",
-          "required": ["id", "depends_on"],
-          "properties": {
-            "id": {"const": "V1"},
-            "depends_on": {"const": "M13"}
-          }
-        }
-      ]
-    },
+    "release_gate": {"$ref": "#/$defs/releaseGate"},
     "post_v1_issues": {
       "type": "array",
       "uniqueItems": true,
@@ -54,30 +42,30 @@
     }
   },
   "$defs": {
-    "trackedIssue": {
+    "milestone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "issue", "depends_on", "status", "title_prefix", "next"],
+      "properties": {
+        "id": {"pattern": "^M(?:[0-9]|1[0-3])$"},
+        "issue": {"type": "integer", "minimum": 1},
+        "depends_on": {"type": ["string", "null"]},
+        "status": {"enum": ["blocked", "active", "complete"]},
+        "title_prefix": {"type": "string", "minLength": 1},
+        "next": {"pattern": "^(?:M(?:[0-9]|1[0-3])|V1)$"}
+      }
+    },
+    "releaseGate": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "issue", "depends_on", "status", "title_prefix"],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
+        "id": {"const": "V1"},
         "issue": {"type": "integer", "minimum": 1},
-        "depends_on": {"type": ["string", "null"]},
+        "depends_on": {"const": "M13"},
         "status": {"enum": ["blocked", "active", "complete"]},
         "title_prefix": {"type": "string", "minLength": 1}
       }
-    },
-    "milestone": {
-      "allOf": [
-        {"$ref": "#/$defs/trackedIssue"},
-        {
-          "type": "object",
-          "required": ["next"],
-          "properties": {
-            "id": {"pattern": "^M(?:[0-9]|1[0-3])$"},
-            "next": {"pattern": "^(?:M(?:[0-9]|1[0-3])|V1)$"}
-          }
-        }
-      ]
     }
   }
 }
