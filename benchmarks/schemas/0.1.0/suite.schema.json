@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/benchmarks/schemas/0.1.0/suite.schema.json",
+  "title": "AXIOM-Bench 0.1 suite",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "schema_version",
+    "benchmark_version",
+    "status",
+    "product_scope",
+    "created_at",
+    "frozen_at",
+    "repository_commit",
+    "specification_path",
+    "preregistration_path",
+    "toolchains_path",
+    "task_paths",
+    "language_pack_paths",
+    "lanes",
+    "adapters",
+    "hash_algorithm",
+    "semantic_sha256"
+  ],
+  "properties": {
+    "document_kind": {"const": "axiom.bench.suite"},
+    "schema_version": {"const": "0.1.0"},
+    "benchmark_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "status": {"enum": ["draft", "frozen", "retired"]},
+    "product_scope": {"const": "axiom-v0.7-semantic-oracle"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "frozen_at": {"type": ["string", "null"], "format": "date-time"},
+    "repository_commit": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
+    "specification_path": {"$ref": "#/$defs/path"},
+    "preregistration_path": {"$ref": "#/$defs/path"},
+    "toolchains_path": {"$ref": "#/$defs/path"},
+    "task_paths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/path"}
+    },
+    "language_pack_paths": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/path"}
+    },
+    "lanes": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {"enum": ["language_only", "compiler_assisted", "full_agent"]},
+      "allOf": [
+        {"contains": {"const": "language_only"}},
+        {"contains": {"const": "compiler_assisted"}},
+        {"contains": {"const": "full_agent"}}
+      ]
+    },
+    "adapters": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {"enum": ["reference", "seeded_wrong", "replay", "inspect_ai", "external_model"]},
+      "allOf": [
+        {"contains": {"const": "reference"}},
+        {"contains": {"const": "seeded_wrong"}},
+        {"contains": {"const": "replay"}}
+      ]
+    },
+    "hash_algorithm": {"const": "sha256"},
+    "semantic_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    }
+  }
+}
