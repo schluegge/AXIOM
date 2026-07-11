@@ -77,7 +77,7 @@
     },
     "failure_reason": {
       "type": ["string", "null"],
-      "enum": [null, "invalid_completion", "invalid_patch", "forbidden_file", "forbidden_dependency", "compile_failure", "public_test_failure", "acceptance_test_failure", "security_failure", "timeout", "resource_limit", "sandbox_required", "runner_error"]
+      "enum": [null, "invalid_completion", "invalid_patch", "forbidden_file", "forbidden_dependency", "format_failure", "compile_failure", "public_test_failure", "acceptance_test_failure", "security_failure", "timeout", "resource_limit", "sandbox_required", "runner_error"]
     },
     "budgets": {"type": "object"},
     "usage": {
