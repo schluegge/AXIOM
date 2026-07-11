@@ -1,0 +1,185 @@
++            start = self.take()
++            reference = self.parse_unary()
++            return self.node(
++                "DerefExpr",
++                start.span,
++                reference.span,
++                reference=reference,
++            )
++        return self.parse_postfix()
++
+     def parse_postfix(self) -> Node:
+         expression = self.parse_atom()
+         while True:
+diff --git a/axiom_proof/semantic.py b/axiom_proof/semantic.py
+index f6fbad19f92c3ab7c5f996f188bb39c6f30b5ae8..777590ad31171cb3af23e24822ddd64cf0910b9d 100644
+--- a/axiom_proof/semantic.py
++++ b/axiom_proof/semantic.py
+@@ -12,18 +12,28 @@ from .type_system import (
+     StructField,
+     TypeRegistry,
+     parse_array_type,
++    parse_reference_type,
++    contains_reference,
+ )
+ 
+ 
+ from .semantic_model import FunctionSignature, LocalBinding
+ from .semantic_blocks import SemanticBlockMixin
++from .semantic_borrows import SemanticBorrowMixin
+ from .semantic_statements import SemanticStatementMixin
+ from .semantic_lvalues import SemanticLValueMixin
+ from .semantic_expressions import SemanticExpressionMixin
+ from .semantic_documents import SemanticDocumentMixin
+ 
+ 
+-class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatementMixin, SemanticExpressionMixin, SemanticDocumentMixin):
++class SemanticAnalyzer(
++    SemanticBlockMixin,
++    SemanticBorrowMixin,
++    SemanticLValueMixin,
++    SemanticStatementMixin,
++    SemanticExpressionMixin,
++    SemanticDocumentMixin,
++):
+     def __init__(self, program: Node):
+         self.program = program
+         self.diagnostics: list[Diagnostic] = []
+@@ -33,6 +43,10 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatemen
+         self.references: list[dict[str, Any]] = []
+         self.call_graph: dict[str, list[str]] = {}
+         self.function_facts: dict[str, dict[str, Any]] = {}
++        self.borrow_scopes: list[list[Any]] = []
++        self.borrow_events: list[dict[str, Any]] = []
++        self.current_function_name = ""
++        self.reference_loan_scopes: list[set[str]] = []
+ 
+     def analyze(self) -> None:
+         self.collect_structs()
+@@ -80,6 +94,14 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatemen
+                 continue
+             for field in declaration.fields["fields"]:
+                 type_name = field.fields["type_name"]
++                if contains_reference(type_name):
++                    self.error(
++                        "AX-REF-0002",
++                        f"references cannot be stored in struct fields: {name}.{field.fields['name']}",
++                        field,
++                        "borrow_checker",
++                    )
++                    continue
+                 array = parse_array_type(type_name)
+                 if array is not None and array[1] <= 0:
+                     self.error(
+@@ -117,9 +139,18 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatemen
+                 continue
+             parameter_types = tuple(parameter.fields["type_name"] for parameter in function.fields["parameters"])
+             return_type = function.fields["return_type"]
+-            for type_name in (*parameter_types, return_type):
+-                if not self.type_is_supported(type_name):
++            for type_name in parameter_types:
++                reference = parse_reference_type(type_name)
++                if contains_reference(type_name) and reference is None:
++                    self.error("AX-REF-0002", f"references cannot be stored in aggregate parameter type: {type_name}", function, "borrow_checker")
++                elif not self.type_is_supported(type_name):
+                     self.error("AX-TYPE-0004", f"unsupported type: {type_name}", function, "type_checker")
++            if parse_reference_type(return_type) is not None:
++                self.error("AX-REF-0001", "returning references is outside the v0.7 subset", function, "borrow_checker")
++            elif contains_reference(return_type):
++                self.error("AX-REF-0002", f"references cannot be stored in return type: {return_type}", function, "borrow_checker")
++            elif not self.type_is_supported(return_type):
++                self.error("AX-TYPE-0004", f"unsupported type: {return_type}", function, "type_checker")
+             self.functions[name] = FunctionSignature(name, parameter_types, return_type, function.node_id)
+             self.call_graph[name] = []
+             self.function_facts[name] = {
+@@ -134,6 +165,11 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatemen
+                 "index_accesses": 0,
+                 "field_writes": 0,
+                 "index_writes": 0,
++                "shared_borrows": 0,
++                "mutable_borrows": 0,
++                "deref_reads": 0,
++                "deref_writes": 0,
++                "mutable_reference_loans": 0,
+             }
+ 
+     def resolve_local(self, scopes: list[dict[str, LocalBinding]], name: str) -> LocalBinding | None:
+diff --git a/axiom_proof/semantic_blocks.py b/axiom_proof/semantic_blocks.py
+index 1aaab362bcbbce522b1b1bc40bf729bd3dbc4793..bf3626a320af8e0d9c244d049f9acfc8308a42cc 100644
+--- a/axiom_proof/semantic_blocks.py
++++ b/axiom_proof/semantic_blocks.py
+@@ -23,13 +23,19 @@ class SemanticBlockMixin:
+                 kind="parameter",
+             )
+         scopes = [parameter_scope]
+-        self.analyze_block(
+-            function.fields["body"],
+-            scopes,
+-            function.fields["return_type"],
+-            function.fields["name"],
+-            create_scope=False,
+-        )
++        self.current_function_name = function.fields["name"]
++        self.borrow_scopes = [[]]
++        try:
++            self.analyze_block(
++                function.fields["body"],
++                scopes,
++                function.fields["return_type"],
++                function.fields["name"],
++                create_scope=False,
++            )
++        finally:
++            self.borrow_scopes = []
++            self.current_function_name = ""
+ 
+     def report_binding_mismatch(self, declared: str, actual: str, node: Node) -> None:
+         declared_array = parse_array_type(declared)
+diff --git a/axiom_proof/semantic_borrows.py b/axiom_proof/semantic_borrows.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..02549077b5f3d5fe98d4786155ee4a593dc83d60
+--- /dev/null
++++ b/axiom_proof/semantic_borrows.py
+@@ -0,0 +1,173 @@
++from __future__ import annotations
++
++from .model import Node
++from .semantic_model import BorrowRecord, LocalBinding
++from .type_system import parse_reference_type, reference_type
++
++
++class SemanticBorrowMixin:
++    def active_borrows(self, binding: LocalBinding) -> list[BorrowRecord]:
++        return [
++            record
++            for scope in self.borrow_scopes
++            for record in scope
++            if record.root_node_id == binding.node_id
++        ]
++
++    def check_root_read(self, binding: LocalBinding, node: Node) -> None:
++        mutable = [record for record in self.active_borrows(binding) if record.mutable]
++        if mutable:
++            self.error(
++                "AX-BORROW-0004",
++                f"cannot read {binding.name} while it is mutably borrowed",
++                node,
++                "borrow_checker",
++            )
++
++    def check_root_write(self, binding: LocalBinding, node: Node) -> None:
++        active = self.active_borrows(binding)
++        if not active:
++            return
++        if any(record.mutable for record in active):
++            message = f"cannot write {binding.name} while it is mutably borrowed"
++        else:
++            message = f"cannot write {binding.name} while shared borrows are live"
++        self.error("AX-BORROW-0005", message, node, "borrow_checker")
++
++    def register_borrow(
++        self,
++        binding: LocalBinding,
++        *,
++        mutable: bool,
++        borrow_node: Node,
