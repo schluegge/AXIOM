@@ -1,0 +1,8 @@
+profile system;
+
+fn main() -> i32 {
+    let negative: i32 = 0 - 7;
+    let quotient: i32 = negative / 3;
+    let remainder: i32 = negative % 3;
+    return quotient + remainder + 20;
+}

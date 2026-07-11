@@ -1,0 +1,5 @@
+profile system;
+
+fn main() -> i32 {
+    return 10 / 0;
+}
