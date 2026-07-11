@@ -1,0 +1,213 @@
+                     actual = self.type_expr(statement.fields["value"], scopes, function_name)
++                    if parse_reference_type(actual) is not None:
++                        self.error(
++                            "AX-REF-0003",
++                            "reference values cannot escape through return in the v0.7 subset",
++                            statement,
++                            "borrow_checker",
++                        )
+                     if actual != "error" and actual != return_type:
+                         self.error(
+                             "AX-TYPE-0002",
+@@ -77,21 +127,11 @@ class SemanticStatementMixin:
+                             "type_checker",
+                         )
+                     self.analyze_block(
+-                        statement.fields["then_block"],
+-                        scopes,
+-                        return_type,
+-                        function_name,
+-                        create_scope=True,
++                        statement.fields["then_block"], scopes, return_type, function_name, create_scope=True
+                     )
+                     else_block = statement.fields.get("else_block")
+                     if isinstance(else_block, Node):
+-                        self.analyze_block(
+-                            else_block,
+-                            scopes,
+-                            return_type,
+-                            function_name,
+-                            create_scope=True,
+-                        )
++                        self.analyze_block(else_block, scopes, return_type, function_name, create_scope=True)
+                 elif statement.kind == "WhileStmt":
+                     condition = self.type_expr(statement.fields["condition"], scopes, function_name)
+                     if condition != "error" and condition != "bool":
+@@ -103,15 +143,11 @@ class SemanticStatementMixin:
+                         )
+                     self.function_facts[function_name]["while_loops"] += 1
+                     self.analyze_block(
+-                        statement.fields["body"],
+-                        scopes,
+-                        return_type,
+-                        function_name,
+-                        create_scope=True,
++                        statement.fields["body"], scopes, return_type, function_name, create_scope=True
+                     )
+                 elif statement.kind == "ExprStmt":
+                     self.type_expr(statement.fields["expression"], scopes, function_name)
+         finally:
+             if create_scope:
++                self.borrow_scopes.pop()
+                 scopes.pop()
+-
+diff --git a/axiom_proof/type_system.py b/axiom_proof/type_system.py
+index 7f118a2d77f8faf51c031f45df16854acb4c4b48..32329047ba6382a32f38283acd05aa298638f378 100644
+--- a/axiom_proof/type_system.py
++++ b/axiom_proof/type_system.py
+@@ -31,6 +31,29 @@ class StructDefinition:
+         return None if index is None else self.fields[index]
+ 
+ 
++
++
++def reference_type(target_type: str, mutable: bool) -> str:
++    return f"&mut {target_type}" if mutable else f"&{target_type}"
++
++
++def parse_reference_type(type_name: str) -> tuple[str, bool] | None:
++    text = type_name.strip()
++    if text.startswith("&mut "):
++        target = text[5:].strip()
++        return (target, True) if target else None
++    if text.startswith("&"):
++        target = text[1:].strip()
++        return (target, False) if target else None
++    return None
++
++
++def contains_reference(type_name: str) -> bool:
++    if parse_reference_type(type_name) is not None:
++        return True
++    array = parse_array_type(type_name)
++    return array is not None and contains_reference(array[0])
++
+ def array_type(element_type: str, length: int) -> str:
+     return f"[{element_type}; {length}]"
+ 
+@@ -84,9 +107,15 @@ class TypeRegistry:
+     def is_known(self, type_name: str) -> bool:
+         if type_name in PRIMITIVE_TYPES or type_name in self.structs:
+             return True
++        reference = parse_reference_type(type_name)
++        if reference is not None:
++            return self.is_known(reference[0]) and not contains_reference(reference[0])
+         array = parse_array_type(type_name)
+         return array is not None and array[1] > 0 and self.is_known(array[0])
+ 
++    def is_value_type(self, type_name: str) -> bool:
++        return self.is_known(type_name) and not contains_reference(type_name)
++
+     def struct(self, type_name: str) -> StructDefinition | None:
+         return self.structs.get(type_name)
+ 
+diff --git a/examples/invalid_ref_argument_order.ax b/examples/invalid_ref_argument_order.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd6915664308e28e2342145b80d715afbf923b49
+--- /dev/null
++++ b/examples/invalid_ref_argument_order.ax
+@@ -0,0 +1,10 @@
++profile system;
++
++fn update(target: &mut i32, after: i32) -> i32 {
++    return *target + after;
++}
++
++fn main() -> i32 {
++    var value: i32 = 21;
++    return update(&mut value, value);
++}
+diff --git a/examples/invalid_ref_array.ax b/examples/invalid_ref_array.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..718895ff250151c18a3c42aedbd9b42ad195409f
+--- /dev/null
++++ b/examples/invalid_ref_array.ax
+@@ -0,0 +1,6 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    let references: [&i32; 1] = [&value];
++    return *references[0];
++}
+diff --git a/examples/invalid_ref_deref_scalar.ax b/examples/invalid_ref_deref_scalar.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee74c383bb394b7fc036746cd1a5b4d0d03ce4c2
+--- /dev/null
++++ b/examples/invalid_ref_deref_scalar.ax
+@@ -0,0 +1,5 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    return *value;
++}
+diff --git a/examples/invalid_ref_duplicate_mut_value.ax b/examples/invalid_ref_duplicate_mut_value.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..5d764a546a89948f1a4aad22e490a5c81acad3b8
+--- /dev/null
++++ b/examples/invalid_ref_duplicate_mut_value.ax
+@@ -0,0 +1,11 @@
++profile system;
++
++fn add(left: &mut i32, right: &mut i32) -> i32 {
++    return *left + *right;
++}
++
++fn main() -> i32 {
++    var value: i32 = 21;
++    let reference: &mut i32 = &mut value;
++    return add(reference, reference);
++}
+diff --git a/examples/invalid_ref_field.ax b/examples/invalid_ref_field.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..6c567828a59b3d388984106af38806f31c6a4ff1
+--- /dev/null
++++ b/examples/invalid_ref_field.ax
+@@ -0,0 +1,5 @@
++profile system;
++struct Holder {
++    value: &i32,
++}
++fn main() -> i32 { return 0; }
+diff --git a/examples/invalid_ref_mut_conflict.ax b/examples/invalid_ref_mut_conflict.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..1a6ba19443fb0c8bbf89aedc057a93c338c827be
+--- /dev/null
++++ b/examples/invalid_ref_mut_conflict.ax
+@@ -0,0 +1,7 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    let first: &mut i32 = &mut value;
++    let second: &mut i32 = &mut value;
++    return *first + *second;
++}
+diff --git a/examples/invalid_ref_mut_immutable.ax b/examples/invalid_ref_mut_immutable.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..f8ecaff7045c931b0e83494ac0377f6bde114fa8
+--- /dev/null
++++ b/examples/invalid_ref_mut_immutable.ax
+@@ -0,0 +1,6 @@
++profile system;
++fn main() -> i32 {
++    let value: i32 = 1;
++    let reference: &mut i32 = &mut value;
++    return *reference;
++}
+diff --git a/examples/invalid_ref_nested_call_loan.ax b/examples/invalid_ref_nested_call_loan.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..3ceda3e27f3ea3f039a39fc8385330eb6db13c0e
+--- /dev/null
++++ b/examples/invalid_ref_nested_call_loan.ax
+@@ -0,0 +1,17 @@
++profile system;
++
++fn bump(value: &mut i32) -> i32 {
++    *value = *value + 1;
++    return *value;
++}
++
++fn combine(target: &mut i32, after: i32) -> i32 {
++    *target = *target + after;
++    return *target;
++}
++
