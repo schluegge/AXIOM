@@ -82,19 +82,42 @@ def reject_symlink(path: Path) -> None:
         current = current.parent
 
 
+def _root_text_replacements(workspace: Path, task_root: Path) -> list[tuple[str, str]]:
+    replacements: set[tuple[str, str]] = set()
+    for root, placeholder in ((workspace, "{workspace}"), (task_root, "{task_root}")):
+        native = str(root)
+        variants = {
+            native,
+            root.as_posix(),
+            native.replace("\\", "/"),
+            native.replace("/", "\\"),
+        }
+        replacements.update((variant, placeholder) for variant in variants if variant)
+    return sorted(replacements, key=lambda item: len(item[0]), reverse=True)
+
+
 def _replace_roots(value: str, workspace: Path, task_root: Path) -> str:
-    replacements = sorted(
-        ((str(workspace), "{workspace}"), (str(task_root), "{task_root}")),
-        key=lambda item: len(item[0]),
-        reverse=True,
-    )
     result = value
-    for source, replacement in replacements:
+    for source, replacement in _root_text_replacements(workspace, task_root):
         result = result.replace(source, replacement)
     return result.replace(os.sep, "/") if os.sep != "/" else result
 
 
-def canonical_command_record(record: dict[str, Any], workspace: Path, task_root: Path) -> dict[str, Any]:
+def canonical_stream_bytes(value: bytes, workspace: Path, task_root: Path) -> bytes:
+    result = value
+    for source, replacement in _root_text_replacements(workspace, task_root):
+        result = result.replace(source.encode("utf-8"), replacement.encode("ascii"))
+    return result
+
+
+def canonical_command_record(
+    record: dict[str, Any],
+    workspace: Path,
+    task_root: Path,
+    *,
+    stdout: bytes | None = None,
+    stderr: bytes | None = None,
+) -> dict[str, Any]:
     value = json.loads(json.dumps(record))
     value["started_at"] = EPOCH_TEXT
     value["finished_at"] = EPOCH_TEXT
@@ -107,6 +130,12 @@ def canonical_command_record(record: dict[str, Any], workspace: Path, task_root:
         key: _replace_roots(str(item), workspace, task_root)
         for key, item in sorted(value["environment"].items())
     }
+    if stdout is not None:
+        value["stdout_sha256"] = sha256_bytes(stdout)
+        value["stdout_bytes"] = len(stdout)
+    if stderr is not None:
+        value["stderr_sha256"] = sha256_bytes(stderr)
+        value["stderr_bytes"] = len(stderr)
     return value
 
 
@@ -205,7 +234,7 @@ def safe_zip_entries(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
         raise ValueError("ZIP entry count exceeds replay limit")
     names: set[str] = set()
     portable_names: set[str] = set()
-    total = 0
+    declared_total = 0
     for entry in entries:
         if entry.is_dir():
             raise ValueError(f"ZIP directory entry is forbidden: {entry.filename}")
@@ -221,10 +250,45 @@ def safe_zip_entries(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
             raise ValueError(f"encrypted ZIP entry is forbidden: {entry.filename}")
         if entry.file_size > MAX_REPLAY_ENTRY_BYTES:
             raise ValueError(f"ZIP entry exceeds replay limit: {entry.filename}")
-        total += entry.file_size
-        if total > MAX_REPLAY_TOTAL_BYTES:
-            raise ValueError("ZIP total size exceeds replay limit")
+        declared_total += entry.file_size
+        if declared_total > MAX_REPLAY_TOTAL_BYTES:
+            raise ValueError("ZIP declared total size exceeds replay limit")
         mode = entry.external_attr >> 16
         if mode and stat.S_ISLNK(mode):
             raise ValueError(f"ZIP symbolic link is forbidden: {path}")
     return entries
+
+
+def read_bounded_zip_entry(
+    archive: zipfile.ZipFile,
+    entry: zipfile.ZipInfo,
+    *,
+    total_bytes: int,
+    max_entry_bytes: int = MAX_REPLAY_ENTRY_BYTES,
+    max_total_bytes: int = MAX_REPLAY_TOTAL_BYTES,
+    chunk_size: int = 64 * 1024,
+) -> tuple[bytes, int]:
+    if total_bytes < 0:
+        raise ValueError("ZIP extracted byte count cannot be negative")
+    if max_entry_bytes < 1 or max_total_bytes < 1 or chunk_size < 1:
+        raise ValueError("ZIP extraction limits must be positive")
+    payload = bytearray()
+    with archive.open(entry, "r") as stream:
+        while True:
+            chunk = stream.read(chunk_size)
+            if not chunk:
+                break
+            next_entry_size = len(payload) + len(chunk)
+            next_total = total_bytes + next_entry_size
+            if next_entry_size > max_entry_bytes:
+                raise ValueError(f"ZIP entry exceeds actual replay limit: {entry.filename}")
+            if next_total > max_total_bytes:
+                raise ValueError("ZIP actual total size exceeds replay limit")
+            payload.extend(chunk)
+    actual_size = len(payload)
+    if actual_size != entry.file_size:
+        raise ValueError(
+            f"ZIP entry decompressed size differs from metadata: {entry.filename} "
+            f"({actual_size} != {entry.file_size})"
+        )
+    return bytes(payload), total_bytes + actual_size
