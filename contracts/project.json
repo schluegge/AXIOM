@@ -186,7 +186,7 @@
     {"id": "projects.modules-manifest", "reason": "Modules, visibility, manifest, lockfile, and reproducible project graphs are not implemented.", "target_milestone": "M9"},
     {"id": "effects.external-capabilities", "reason": "Filesystem, environment, output, and process authority are not capability-enforced.", "target_milestone": "M10"},
     {"id": "stdlib.cli-data-json", "reason": "The v1 standard library and deterministic JSON implementation are not delivered.", "target_milestone": "M11"},
-    {"id": "target.windows-x86_64-msvc", "reason": "Windows release parity is required for v1 but is not proven by v0.7.", "target_milestone": "M12"},
+    {"id": "target.windows-x86-64-msvc", "reason": "Windows release parity is required for v1 but is not proven by v0.7.", "target_milestone": "M12"},
     {"id": "benchmark.ai-first-holdout", "reason": "The external frozen holdout has not run; no AI-first superiority claim is proven.", "target_milestone": "M13"},
     {"id": "memory.raw-pointers-unsafe", "reason": "Issue #8 is explicitly post-v1 and cannot be represented as implemented in the v1 safe core.", "target_milestone": "post-v1"},
     {"id": "domains.network-concurrency-gpu-kernel", "reason": "These domains are outside the focused v1 CLI/data product boundary.", "target_milestone": "post-v1"}
