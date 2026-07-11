@@ -37,13 +37,16 @@ jobs:
 
       - name: Record tool versions
         run: |
-          python3 --version
-          clang --version
-          python3 - <<'PY'
+          mkdir -p evidence/ci-diagnostics
+          {
+            python3 --version
+            clang --version
+            python3 - <<'PY'
           from importlib.metadata import version
           for name in ["jsonschema", "attrs", "jsonschema-specifications", "referencing", "rpds-py", "typing-extensions"]:
               print(f"{name}=={version(name)}")
           PY
+          } | tee evidence/ci-diagnostics/proof-dependency-versions.txt
 
       - name: Run release-blocking repository proof
         shell: bash
