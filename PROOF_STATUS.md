@@ -21,7 +21,7 @@ The complete public proven-language claim surface is checked against
 
 - project contract: 8 current capabilities, 14 deferred features, 0 findings;
 - benchmark contract: 8 schemas, 0 findings;
-- unit/integration suite: 101/101;
+- unit/integration suite: 103/103;
 - Agent B release-blocking checks: 73/73;
 - interpreter/native differential corpus: 38/38;
 - stable invalid fixture matrix: 52/52;
@@ -63,8 +63,15 @@ The proof establishes:
 - raw versus canonical Evidence separation;
 - byte-identical repeated reference bundles;
 - canonical ZIP path, collision, symlink, encryption, count, and size checks;
-- replay validation of internal paths, schemas, identities, hashes, sizes,
-  sequence numbers, outcomes, and conformance decisions;
+- replay validation of internal paths, schemas, identities, hashes, sizes, and
+  trace sequence numbers;
+- direct verification of candidate bytes against raw/extracted attempt hashes;
+- independent derivation of outcomes and failure reasons from command records,
+  stream sizes, retained budgets, and trace terminal events;
+- cross-checking of derived results against attempt outcomes, report decisions,
+  check-result trace events, and the score-decision event;
+- adversarial rejection when an attacker repairs the manifest/hash chain after
+  replacing the candidate or rewriting an acceptance command result;
 - replay with zero subprocesses;
 - local rejection of untrusted model output before candidate application.
 
