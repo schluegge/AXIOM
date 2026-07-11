@@ -1,6 +1,8 @@
-# Axiom Sandbox Vertical Proof v0.4.0
+# AXIOM v0.4.0 Reference Compiler
 
-This repository contains an executable reference compiler slice proving checked `i32` arithmetic through every implemented stage:
+AXIOM is an AI-first universal systems language project. This repository currently contains an executed Python/LLVM semantic oracle for the bootstrap compiler.
+
+The proven vertical path is:
 
 ```text
 UTF-8 source
@@ -9,7 +11,7 @@ UTF-8 source
 → versioned AST
 → canonical formatter
 → name resolution
-→ type and effect checking
+→ type/effect checking
 → HIR and CFG
 → interpreter
 → checked LLVM IR
@@ -18,40 +20,57 @@ UTF-8 source
 → interpreter/native differential proof
 ```
 
-The current reference subset also preserves proofs for mutable locals, lexical blocks, `while`, recursion, C ABI, script profile, WebAssembly artifact generation, and a RISC-V freestanding object.
+The current subset includes:
 
-Run from the repository root:
+- `i32` and `bool`
+- functions and recursion
+- immutable `let` and mutable `var`
+- assignments and lexical block scopes
+- `if` and `while`
+- checked signed `i32` arithmetic
+- stable arithmetic panic identities
+- C-compatible function lowering
+- `system` and `script` profile parsing
+
+## Run the repository proof
+
+Requirements:
+
+- Python 3.11 or newer
+- Clang with support for textual LLVM IR
+
+From the repository root:
 
 ```bash
-python3 run_proof.py
+python3 run_repo_proof.py
 ```
 
-Generated evidence:
+The command runs the unit suite and interpreter/native differential corpus, then creates:
 
 ```text
-evidence/AXIOM_SANDBOX_VERTICAL_PROOF_EVIDENCE.zip
+evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
+
+Generated binaries, objects, WebAssembly files, and Evidence ZIPs are ignored by Git.
 
 ## Checked arithmetic
 
-The current default arithmetic mode is checked signed `i32`:
+The current default is checked signed `i32`:
 
-- out-of-range literals fail compilation
+- out-of-range literals fail compilation with `AX-INT-0001`
 - addition, subtraction, and multiplication panic on overflow
 - division rounds toward zero
 - remainder has the dividend sign
 - division/remainder by zero panic
 - `INT_MIN / -1` and `INT_MIN % -1` panic
-- interpreter and native execution use the same panic identities
+- interpreter and native execution use the same panic identity and reference exit code
 
 See `ARITHMETIC_SEMANTICS.md`.
 
-## Review split
+## Development contract
 
-- Agent A owns implementation and the regular test suite.
-- Agent B is a separate deterministic review process with a read-only charter and release-blocking adversarial checks.
-- Agent B is not claimed to be a second language-model instance.
+Read `AGENTS.md` before changing compiler behavior. External LLVM, ABI, linker, runtime, and protocol APIs require authoritative source evidence before implementation.
 
 ## Proof boundary
 
-This is an executed architecture and semantics oracle. It is not Axiom 1.0 and does not replace the planned Rust bootstrap compiler.
+This repository is an executable architecture and semantics oracle. It is not AXIOM 1.0 and does not replace the planned Rust bootstrap compiler. Current proven and unproven boundaries are recorded in `PROOF_STATUS.md`.

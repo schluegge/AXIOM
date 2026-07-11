@@ -1,0 +1,9 @@
+profile system;
+
+fn main() -> i32 {
+    var result: i32 = 1;
+    if true {
+        result = 9;
+    }
+    return result;
+}

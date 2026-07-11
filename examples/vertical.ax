@@ -1,0 +1,13 @@
+profile system;
+
+fn fibonacci(value: i32) -> i32 {
+    if value < 2 {
+        return value;
+    }
+    return fibonacci(value - 1) + fibonacci(value - 2);
+}
+
+fn main() -> i32 {
+    let result: i32 = fibonacci(10);
+    return result;
+}

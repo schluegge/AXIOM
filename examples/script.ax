@@ -1,0 +1,6 @@
+profile script;
+
+fn main() -> i32 {
+    let answer: i32 = 6 * 7;
+    return answer;
+}

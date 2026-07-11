@@ -1,0 +1,6 @@
+profile system;
+
+fn main() -> i32 {
+    let minimum: i32 = 0 - 2147483647 - 1;
+    return minimum / (0 - 1);
+}

@@ -1,0 +1,11 @@
+profile system;
+
+fn main() -> i32 {
+    var index: i32 = 1;
+    var sum: i32 = 0;
+    while index <= 10 {
+        sum = sum + index;
+        index = index + 1;
+    }
+    return sum;
+}
