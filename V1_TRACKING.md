@@ -3,7 +3,8 @@
 Canonical program issue: [#9](https://github.com/schluegge/AXIOM/issues/9)  
 Release gate: [#25](https://github.com/schluegge/AXIOM/issues/25)  
 Machine-readable graph: [`roadmap/v1.json`](roadmap/v1.json)  
-Canonical technical roadmap: [`MVP_ROADMAP.md`](MVP_ROADMAP.md)
+Canonical technical roadmap: [`MVP_ROADMAP.md`](MVP_ROADMAP.md)  
+Active milestone: **M1 / issue #12**
 
 ## Release definition
 
@@ -20,8 +21,8 @@ product gates pass and the benchmark result is reported honestly.
 
 | ID | GitHub issue | State in contract | Depends on | Outcome |
 |---|---:|---|---|---|
-| M0 | [#11](https://github.com/schluegge/AXIOM/issues/11) | active | roadmap PR #10 | Project authority and consistency |
-| M1 | [#12](https://github.com/schluegge/AXIOM/issues/12) | blocked | M0 | AXIOM-Bench 0.1 |
+| M0 | [#11](https://github.com/schluegge/AXIOM/issues/11) | complete | roadmap PR #10 | Project authority and consistency |
+| M1 | [#12](https://github.com/schluegge/AXIOM/issues/12) | active | M0 | AXIOM-Bench 0.1 |
 | M2 | [#13](https://github.com/schluegge/AXIOM/issues/13) | blocked | M1 | Rust bootstrap v0.7 parity |
 | M3 | [#14](https://github.com/schluegge/AXIOM/issues/14) | blocked | M2 | Compiler/AI interaction protocol |
 | M4 | [#15](https://github.com/schluegge/AXIOM/issues/15) | blocked | M3 | Scalar completeness |
@@ -38,6 +39,15 @@ product gates pass and the benchmark result is reported honestly.
 
 Only one milestone may have status `active`. Completion must move from top to
 bottom without skipping a dependency.
+
+## Completed transition
+
+M0 was completed by PR #27. Its exact head passed the roadmap contract and two
+complete repository-proof executions with byte-identical inner Evidence ZIPs:
+
+```text
+6f615e62c6a3347792ea4d9611904498512f53a3359dd84707c9c0928880bbeb
+```
 
 ## GitHub controls
 

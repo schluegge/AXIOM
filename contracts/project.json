@@ -6,7 +6,7 @@
     "name": "AXIOM",
     "repository": "schluegge/AXIOM",
     "program_issue": 9,
-    "active_milestone": "M0",
+    "active_milestone": "M1",
     "roadmap_contract": "roadmap/v1.json"
   },
   "language": {

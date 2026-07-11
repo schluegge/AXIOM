@@ -1,7 +1,7 @@
 # Proof Status — v0.7.0
 
 Proven target: `x86_64-unknown-linux-gnu`  
-Current milestone: M0 project authority and consistency gate
+Current milestone: M1 AXIOM-Bench seed and preregistration
 
 ## Contract-indexed proven features
 
@@ -17,12 +17,12 @@ checked against `contracts/project.json` by `tools/check_project_contract.py`.
 - `memory.scoped-references` — non-null scoped references and conservative lexical borrow checking.
 <!-- AXIOM-PROJECT-CONTRACT:FEATURES:END -->
 
-## M0 release-blocking proof
+## Completed M0 release-blocking proof
 
 The project-contract gate is part of the canonical repository proof and runs
 before the ordinary test suite and Agent B review.
 
-Current M0 proof dimensions:
+M0 proof dimensions:
 
 - project contract: **passed**, 6 current features, 14 deferred features, 0 findings
 - unit/integration suite: **65/65**
@@ -34,10 +34,12 @@ Current M0 proof dimensions:
 - all v0.5 aggregate/layout/C-ABI regressions: passed
 - all v0.4 arithmetic/control-flow regressions: passed
 
-The merge gate requires these dimensions on the exact pull-request head and a
-second clean GitHub Actions execution with a byte-identical inner Evidence ZIP.
-The exact final hashes belong to the immutable PR/issue Evidence record rather
-than this source file, avoiding a self-referential source/hash cycle.
+PR #27 passed the exact-head proof twice. Both independently generated inner
+Evidence archives were byte-identical:
+
+```text
+6f615e62c6a3347792ea4d9611904498512f53a3359dd84707c9c0928880bbeb
+```
 
 ## Project-contract proofs
 
@@ -96,5 +98,5 @@ the root. This is conservative and safe, not a field-sensitive lifetime proof.
 The runner normalizes only volatile unittest wall-clock duration and fixes ZIP
 metadata. Compiler artifacts, diagnostics, native results, generated matrices,
 project-contract reports, pinned dependency versions, and reviewer reports are
-retained in the GitHub Evidence bundle. Exact-head and repeated-run digests are
-recorded on the owning PR and milestone issue.
+retained in the GitHub Evidence bundle. Each milestone records exact-head and
+repeated-run digests on its owning PR and issue.
