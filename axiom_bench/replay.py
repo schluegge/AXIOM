@@ -9,6 +9,7 @@ from typing import Any
 
 from .bundle import (
     canonical_json,
+    read_bounded_zip_entry,
     safe_join,
     safe_zip_entries,
     semantic_sha256,
@@ -43,8 +44,8 @@ def _load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _schema(repository_root: Path, name: str) -> dict[str, Any]:
-    return _load_json(repository_root / "benchmarks" / "schemas" / "0.1.0" / name)
+def _schema(root: Path, name: str) -> dict[str, Any]:
+    return _load_json(root / "benchmarks" / "schemas" / "0.1.0" / name)
 
 
 def _bundle_path(root: Path, value: Any, label: str, *, required: bool = True) -> Path:
@@ -59,17 +60,15 @@ def _bundle_path(root: Path, value: Any, label: str, *, required: bool = True) -
     return path
 
 
-def _add_schema_findings(
+def _schema_ok(
     findings: list[ReplayFinding],
     document: dict[str, Any],
     schema: dict[str, Any],
     label: str,
 ) -> bool:
-    schema_findings = validate_document(document, schema, label=label)
-    findings.extend(
-        ReplayFinding(item.code, item.path, item.message) for item in schema_findings
-    )
-    return not schema_findings
+    errors = validate_document(document, schema, label=label)
+    findings.extend(ReplayFinding(item.code, item.path, item.message) for item in errors)
+    return not errors
 
 
 def _tampered(findings: list[ReplayFinding], path: str, message: str) -> None:
@@ -85,31 +84,28 @@ def _positive_int(value: Any, label: str) -> int:
 def _candidate_integrity(
     root: Path, attempt: dict[str, Any], findings: list[ReplayFinding]
 ) -> bool:
-    raw_path = _bundle_path(root, attempt["raw_completion_path"], "attempt.raw_completion_path")
-    extracted_path = _bundle_path(
-        root,
-        attempt["extracted_artifact_path"],
-        "attempt.extracted_artifact_path",
+    raw = _bundle_path(root, attempt["raw_completion_path"], "attempt.raw_completion_path")
+    extracted = _bundle_path(
+        root, attempt["extracted_artifact_path"], "attempt.extracted_artifact_path"
     )
+    canonical = _bundle_path(root, "candidate.bin", "canonical candidate")
     valid = True
-    if raw_path != extracted_path:
+    if raw != extracted:
         _tampered(
             findings,
             "attempt.extracted_artifact_path",
-            "trusted conformance raw and extracted candidates must identify the same file",
+            "trusted raw and extracted candidates must identify the same file",
         )
         valid = False
-    canonical_candidate = _bundle_path(root, "candidate.bin", "canonical candidate")
-    if raw_path != canonical_candidate:
+    if raw != canonical:
         _tampered(
             findings,
             "attempt.raw_completion_path",
-            "trusted conformance candidate path is not canonical candidate.bin",
+            "trusted candidate path is not canonical candidate.bin",
         )
         valid = False
-
-    raw_sha = sha256_file(raw_path)
-    extracted_sha = sha256_file(extracted_path)
+    raw_sha = sha256_file(raw)
+    extracted_sha = sha256_file(extracted)
     if raw_sha != attempt["raw_completion_sha256"]:
         _tampered(
             findings,
@@ -131,35 +127,29 @@ def _candidate_integrity(
             "trusted raw and extracted candidate hashes differ",
         )
         valid = False
-    if attempt["mutations"].get("patch_bytes") != raw_path.stat().st_size:
+    if attempt["mutations"].get("patch_bytes") != raw.stat().st_size:
         _tampered(
             findings,
             "attempt.mutations.patch_bytes",
-            "recorded patch byte count differs from candidate size",
+            "recorded patch bytes differ from candidate size",
         )
         valid = False
     return valid
 
 
-def _command_failure(command: dict[str, Any], cumulative_feedback: int, limit: int) -> str | None:
-    termination = command["termination"]
-    return_code = command["return_code"]
-    if termination == "not_started":
-        return "runner_error"
-    if return_code is None:
+def _command_failure(command: dict[str, Any], feedback: int, limit: int) -> str | None:
+    if command["termination"] == "not_started" or command["return_code"] is None:
         return "runner_error"
     if command["timed_out"]:
         return "timeout"
-    if command["output_limited"] or cumulative_feedback > limit:
+    if command["output_limited"] or feedback > limit:
         return "resource_limit"
-    if return_code != 0:
+    if command["return_code"] != 0:
         return _PHASE_FAILURE[command["phase"]]
     return None
 
 
-def _apply_phase_outcome(
-    outcomes: dict[str, bool | None], phase: str, success: bool
-) -> None:
+def _apply_outcome(outcomes: dict[str, bool | None], phase: str, success: bool) -> None:
     if phase == "check":
         outcomes["parse_success"] = success
         outcomes["compile_success"] = success
@@ -187,14 +177,18 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
             entries = safe_zip_entries(archive)
             with tempfile.TemporaryDirectory(prefix="axiom-bench-replay-") as directory:
                 root = Path(directory).resolve()
+                extracted_total = 0
                 for entry in entries:
+                    payload, extracted_total = read_bounded_zip_entry(
+                        archive, entry, total_bytes=extracted_total
+                    )
                     target = _bundle_path(root, entry.filename, "ZIP entry", required=False)
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_bytes(archive.read(entry))
+                    target.write_bytes(payload)
 
                 manifest_path = _bundle_path(root, "bundle-manifest.json", "bundle manifest")
                 manifest = _load_json(manifest_path)
-                if not _add_schema_findings(
+                if not _schema_ok(
                     findings,
                     manifest,
                     _schema(repository_root, "bundle-manifest.schema.json"),
@@ -223,19 +217,20 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                     if not path.is_file():
                         _tampered(findings, relative, "manifest file is missing")
                         continue
-                    actual_sha = sha256_file(path)
-                    actual_size = path.stat().st_size
-                    if actual_sha != expected["sha256"] or actual_size != expected["size_bytes"]:
+                    if (
+                        sha256_file(path) != expected["sha256"]
+                        or path.stat().st_size != expected["size_bytes"]
+                    ):
                         _tampered(findings, relative, "file hash or size differs from manifest")
                     else:
                         files_verified += 1
 
                 semantic_payload = {
                     "bundle_kind": manifest["bundle_kind"],
-                    "task_id": manifest["task_id"],
-                    "language": manifest["language"],
-                    "adapter": manifest["adapter"],
-                    "files": manifest["files"],
+                    "task_id": task_id,
+                    "language": language,
+                    "adapter": adapter,
+                    "files": expected_files,
                 }
                 if semantic_sha256(semantic_payload) != manifest["semantic_sha256"]:
                     _tampered(
@@ -244,25 +239,23 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                         "bundle semantic hash mismatch",
                     )
 
-                attempt_path = _bundle_path(root, "attempt.json", "canonical attempt")
-                report_path = _bundle_path(
+                canonical_attempt_path = _bundle_path(root, "attempt.json", "canonical attempt")
+                canonical_report_path = _bundle_path(
                     root, "conformance-report.json", "canonical conformance report"
                 )
-                attempt = _load_json(attempt_path)
-                report = _load_json(report_path)
-                attempt_valid = _add_schema_findings(
+                attempt = _load_json(canonical_attempt_path)
+                report = _load_json(canonical_report_path)
+                if not _schema_ok(
                     findings,
                     attempt,
                     _schema(repository_root, "attempt.schema.json"),
                     "attempt",
-                )
-                report_valid = _add_schema_findings(
+                ) or not _schema_ok(
                     findings,
                     report,
                     _schema(repository_root, "conformance-report.schema.json"),
                     "conformance-report",
-                )
-                if not attempt_valid or not report_valid:
+                ):
                     raise ValueError("attempt or conformance report failed schema validation")
 
                 recorded = report["conformance_passed"]
@@ -276,11 +269,11 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                 referenced_attempt = _bundle_path(
                     root, report["attempt_path"], "conformance-report.attempt_path"
                 )
-                if referenced_attempt != attempt_path:
+                if referenced_attempt != canonical_attempt_path:
                     _tampered(
                         findings,
                         "conformance-report.attempt_path",
-                        "attempt path is not the canonical attempt.json path",
+                        "attempt path is not canonical attempt.json",
                     )
                 if sha256_file(referenced_attempt) != report["attempt_sha256"]:
                     _tampered(
@@ -290,7 +283,6 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                     )
 
                 candidate_valid = _candidate_integrity(root, attempt, findings)
-
                 trace_path = _bundle_path(
                     root,
                     report["canonical_trace_path"],
@@ -300,7 +292,7 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                     _tampered(
                         findings,
                         "conformance-report.canonical_trace_path",
-                        "trace path is not the canonical trace.jsonl path",
+                        "trace path is not canonical trace.jsonl",
                     )
                 if sha256_file(trace_path) != report["canonical_trace_sha256"]:
                     _tampered(
@@ -325,7 +317,7 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                 commands: list[dict[str, Any]] = []
                 cumulative_feedback = 0
                 derived_failure: str | None = None
-                derived_phase_results: dict[str, tuple[bool, str | None]] = {}
+                phase_results: dict[str, tuple[bool, str | None]] = {}
 
                 for index, reference in enumerate(attempt["command_records"]):
                     if index >= len(_PHASE_ORDER):
@@ -347,7 +339,7 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                         _tampered(findings, reference["path"], "command record has the wrong hash")
                         continue
                     command = _load_json(path)
-                    if not _add_schema_findings(
+                    if not _schema_ok(
                         findings,
                         command,
                         command_schema,
@@ -374,10 +366,9 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                             command[f"{stream}_path"],
                             f"command.{stream}_path",
                         )
-                        actual_sha = sha256_file(stream_path)
                         actual_size = stream_path.stat().st_size
                         stream_bytes += actual_size
-                        if actual_sha != command[f"{stream}_sha256"]:
+                        if sha256_file(stream_path) != command[f"{stream}_sha256"]:
                             _tampered(
                                 findings,
                                 command[f"{stream}_path"],
@@ -390,72 +381,63 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                                 f"{stream} payload has the wrong size",
                             )
                     cumulative_feedback += stream_bytes
-                    command_failure = _command_failure(
-                        command, cumulative_feedback, max_feedback
-                    )
-                    success = command_failure is None
-                    derived_phase_results[command["phase"]] = (success, command_failure)
-                    if command_failure is not None and derived_failure is None:
-                        derived_failure = command_failure
+                    failure = _command_failure(command, cumulative_feedback, max_feedback)
+                    success = failure is None
+                    phase_results[command["phase"]] = (success, failure)
+                    if failure is not None and derived_failure is None:
+                        derived_failure = failure
                     commands.append(command)
 
                 if len(commands) > max_invocations:
                     _tampered(
                         findings,
                         "attempt.usage.compiler_invocations",
-                        "retained command count exceeds the recorded invocation budget",
+                        "retained command count exceeds invocation budget",
                     )
                 if attempt["usage"]["compiler_invocations"] != len(commands):
                     _tampered(
                         findings,
                         "attempt.usage.compiler_invocations",
-                        "recorded invocation usage differs from retained command records",
+                        "recorded invocation usage differs from command records",
                     )
                 if attempt["usage"]["feedback_bytes"] != cumulative_feedback:
                     _tampered(
                         findings,
                         "attempt.usage.feedback_bytes",
-                        "recorded feedback usage differs from retained stream bytes",
+                        "recorded feedback differs from retained stream bytes",
                     )
 
                 trace_schema = _schema(repository_root, "trace-event.schema.json")
                 trace_events: list[dict[str, Any]] = []
-                sequence = 0
                 with trace_path.open("r", encoding="utf-8") as handle:
-                    for line_number, line in enumerate(handle, start=1):
+                    for sequence, line in enumerate(handle):
                         event = json.loads(line)
                         if not isinstance(event, dict):
                             raise ValueError("trace event must be an object")
-                        _add_schema_findings(
-                            findings,
-                            event,
-                            trace_schema,
-                            f"trace:{line_number}",
-                        )
+                        _schema_ok(findings, event, trace_schema, f"trace:{sequence + 1}")
                         if event.get("sequence") != sequence:
                             _tampered(
                                 findings,
-                                f"trace:{line_number}",
+                                f"trace:{sequence + 1}",
                                 f"expected sequence {sequence}, got {event.get('sequence')}",
                             )
-                        sequence += 1
                         trace_events.append(event)
 
-                trace_terminal_reasons = [
+                terminal_reasons = [
                     "timeout" if event.get("event_kind") == "timeout" else "resource_limit"
                     for event in trace_events
                     if event.get("event_kind") in {"timeout", "budget_exhausted"}
                 ]
                 if derived_failure is None and len(commands) < 4:
-                    if trace_terminal_reasons:
-                        derived_failure = trace_terminal_reasons[-1]
+                    if terminal_reasons:
+                        derived_failure = terminal_reasons[-1]
                     elif len(commands) >= max_invocations:
                         derived_failure = "resource_limit"
                     else:
                         _tampered(
                             findings,
                             "attempt.command_records",
-                            "successful command prefix ends before acceptance without a retained terminal reason",
+                            "successful command prefix ends before acceptance without terminal reason",
                         )
 
                 derived_outcomes: dict[str, bool | None] = {
@@ -468,12 +450,12 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                     "full_success": False,
                 }
                 for command in commands:
-                    success, _ = derived_phase_results[command["phase"]]
-                    _apply_phase_outcome(derived_outcomes, command["phase"], success)
+                    success, _ = phase_results[command["phase"]]
+                    _apply_outcome(derived_outcomes, command["phase"], success)
                 if (
                     derived_failure is None
                     and derived_outcomes["acceptance_test_success"] is True
-                    and "security_test" not in derived_phase_results
+                    and "security_test" not in phase_results
                 ):
                     derived_outcomes["security_success"] = True
                 derived_outcomes["full_success"] = all(
@@ -487,12 +469,12 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                     )
                 )
 
-                for field, derived_value in derived_outcomes.items():
-                    if attempt["outcomes"].get(field) is not derived_value:
+                for field, derived in derived_outcomes.items():
+                    if attempt["outcomes"].get(field) is not derived:
                         _tampered(
                             findings,
                             f"attempt.outcomes.{field}",
-                            f"recorded outcome {attempt['outcomes'].get(field)!r} differs from replay-derived {derived_value!r}",
+                            f"recorded outcome {attempt['outcomes'].get(field)!r} differs from replay-derived {derived!r}",
                         )
                 if attempt["failure_reason"] != derived_failure:
                     _tampered(
@@ -501,17 +483,17 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                         f"recorded failure {attempt['failure_reason']!r} differs from replay-derived {derived_failure!r}",
                     )
 
-                trace_checks = [
+                check_events = [
                     event for event in trace_events if event.get("event_kind") == "check_result"
                 ]
-                if len(trace_checks) != len(commands):
+                if len(check_events) != len(commands):
                     _tampered(
                         findings,
                         "trace.check_result",
-                        "trace check-result count differs from retained command count",
+                        "trace check-result count differs from command count",
                     )
-                for event, command in zip(trace_checks, commands):
-                    success, failure = derived_phase_results[command["phase"]]
+                for event, command in zip(check_events, commands):
+                    success, failure = phase_results[command["phase"]]
                     payload = event.get("payload", {})
                     if (
                         payload.get("phase") != command["phase"]
@@ -521,7 +503,7 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                         _tampered(
                             findings,
                             f"trace.check_result.{command['phase']}",
-                            "trace check result differs from replay-derived command result",
+                            "trace check result differs from replay-derived result",
                         )
 
                 expected = report["expected_outcome"]
@@ -534,13 +516,13 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
                     _tampered(
                         findings,
                         "conformance-report.actual_full_success",
-                        "recorded full-success value differs from replay-derived outcomes",
+                        "recorded full success differs from replay-derived outcomes",
                     )
                 if report["actual_failure_reason"] != derived_failure:
                     _tampered(
                         findings,
                         "conformance-report.actual_failure_reason",
-                        "recorded failure reason differs from replay-derived failure",
+                        "recorded failure differs from replay-derived failure",
                     )
                 if recorded is not recomputed:
                     _tampered(
@@ -573,6 +555,7 @@ def replay_conformance(repository_root: Path, bundle_path: Path) -> dict[str, An
     except (
         FileNotFoundError,
         KeyError,
+        MemoryError,
         OSError,
         TypeError,
         ValueError,
