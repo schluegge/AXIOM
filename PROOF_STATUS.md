@@ -1,12 +1,58 @@
 # Proof Status — v0.7.0
 
-## Passed locally before the exact GitHub gate
+Proven target: `x86_64-unknown-linux-gnu`  
+Current milestone: M0 project authority and consistency gate
 
-- unit/integration suite: **51/51**
-- Agent B release-blocking review: **51/51**
+## Contract-indexed proven features
+
+The following IDs are the complete public proven-feature claim surface. They are
+checked against `contracts/project.json` by `tools/check_project_contract.py`.
+
+<!-- AXIOM-PROJECT-CONTRACT:FEATURES:BEGIN -->
+- `core.vertical-pipeline` — source-to-native vertical pipeline and deterministic compiler documents.
+- `language.mutable-control-flow` — explicit mutable locals, nested mutation, branches, and loops.
+- `arithmetic.checked-i32` — checked signed arithmetic and stable fault behavior.
+- `data.aggregates-fixed-arrays` — structs, fixed arrays, checked indexing, layout, and narrow C ABI proof.
+- `mutation.structured-lvalues` — structured field/index assignment with specified evaluation order.
+- `memory.scoped-references` — non-null scoped references and conservative lexical borrow checking.
+<!-- AXIOM-PROJECT-CONTRACT:FEATURES:END -->
+
+## M0 release-blocking proof
+
+The project-contract gate is part of the canonical repository proof and runs
+before the ordinary test suite and Agent B review.
+
+Current M0 proof dimensions:
+
+- project contract: **passed**, 6 current features, 14 deferred features, 0 findings
+- unit/integration suite: **65/65**
+- Agent B release-blocking review: **59/59**
+- interpreter/native differential corpus: **38/38**
+- stable invalid fixture matrix: **52/52**
+- complete pinned proof dependency closure: passed
 - all v0.6 structured-mutation regressions: passed
 - all v0.5 aggregate/layout/C-ABI regressions: passed
 - all v0.4 arithmetic/control-flow regressions: passed
+
+The merge gate requires these dimensions on the exact pull-request head and a
+second clean GitHub Actions execution with a byte-identical inner Evidence ZIP.
+The exact final hashes belong to the immutable PR/issue Evidence record rather
+than this source file, avoiding a self-referential source/hash cycle.
+
+## Project-contract proofs
+
+- Draft 2020-12 schema checked explicitly with `Draft202012Validator`
+- external schema references rejected before validator construction
+- exact dependency pins verified against installed package versions
+- every indexed repository path exists and remains inside the repository root
+- current and deferred feature IDs are unique and disjoint
+- every proven feature has normative semantics, tests, proof IDs, and a named target
+- every source diagnostic family has exactly one feature owner
+- README and proof-status feature claim blocks match the contract exactly
+- project contract and v1 roadmap agree on the active milestone
+- invalid pins, missing dependencies, version drift, broken paths, claim drift,
+  duplicate diagnostic ownership, unsupported targets, and deferred-as-current
+  mutations are release-blocking
 
 ## Scoped-reference proofs
 
@@ -47,13 +93,8 @@ the root. This is conservative and safe, not a field-sensitive lifetime proof.
 
 ## Evidence reproducibility
 
-Two complete runs in the original checkout and one cache-free run from a
-different absolute root produced the same byte-for-byte Evidence ZIP:
-
-```text
-2d22975825266171713bedf77150b27df59015d338204a4d5908ae7a7c4a939e
-```
-
 The runner normalizes only volatile unittest wall-clock duration and fixes ZIP
 metadata. Compiler artifacts, diagnostics, native results, generated matrices,
-and reviewer reports remain inside the archive.
+project-contract reports, pinned dependency versions, and reviewer reports are
+retained in the GitHub Evidence bundle. Exact-head and repeated-run digests are
+recorded on the owning PR and milestone issue.

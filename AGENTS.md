@@ -6,7 +6,7 @@ AXIOM is an AI-first systems language project. The active repository contains
 an executed Python/LLVM semantics oracle that defines and tests the future Rust
 bootstrap compiler.
 
-The current product target is the MVP defined in issue #9:
+The current product target is the v1 program defined in issue #9:
 
 ```text
 safe deterministic local CLI and structured-data tools
@@ -20,11 +20,15 @@ license to develop unrelated domains in parallel.
 Current authority order:
 
 1. normative semantic specifications;
-2. machine-readable project/feature contracts when introduced;
+2. `contracts/project.json` as the validated machine-readable index;
 3. `MVP_ROADMAP.md` for implementation sequence and scope;
 4. `AI_FIRST_MVP_CONTRACT.md` for measurable product claims;
 5. roadmap amendments/ADRs for historical rationale;
 6. `README.md` as a checked summary.
+
+`contracts/project.schema.json` defines the structural contract. The semantic
+specifications remain the authority for language meaning; schema validity alone
+is never semantic proof.
 
 Historical amendments do not override the current canonical roadmap unless a
 new amendment also updates that roadmap.
@@ -32,17 +36,20 @@ new amendment also updates that roadmap.
 ## Required reading
 
 1. `README.md`
-2. `MVP_ROADMAP.md`
-3. `AI_FIRST_MVP_CONTRACT.md`
-4. `PROOF_STATUS.md`
-5. `ARITHMETIC_SEMANTICS.md`
-6. `AGGREGATE_SEMANTICS.md`
-7. `MUTATION_SEMANTICS.md`
-8. `REFERENCE_SEMANTICS.md`
-9. `CONTEXT7_SOURCE_EVIDENCE.md`
-10. `CONTEXT7_MVP_DESIGN_EVIDENCE.md`
-11. the relevant roadmap amendment
-12. implementation and tests for the affected stage
+2. `contracts/project.json`
+3. `CORE_SEMANTICS.md`
+4. `MVP_ROADMAP.md`
+5. `AI_FIRST_MVP_CONTRACT.md`
+6. `PROOF_STATUS.md`
+7. `ARITHMETIC_SEMANTICS.md`
+8. `AGGREGATE_SEMANTICS.md`
+9. `MUTATION_SEMANTICS.md`
+10. `REFERENCE_SEMANTICS.md`
+11. `CONTEXT7_SOURCE_EVIDENCE.md`
+12. `CONTEXT7_MVP_DESIGN_EVIDENCE.md`
+13. `M0_CONTRACT_SOURCE_EVIDENCE.md` when changing project-contract behavior
+14. the relevant roadmap amendment
+15. implementation and tests for the affected stage
 
 ## Mandatory rules
 
@@ -80,8 +87,15 @@ new amendment also updates that roadmap.
   never auto-install an undeclared package.
 - Do not introduce a custom IDE, linker, debugger, package registry, backend, or
   orchestration framework before a current blocker proves it necessary.
-- User-visible raw pointers and general-purpose `unsafe` remain post-MVP unless a
+- User-visible raw pointers and general-purpose `unsafe` remain post-v1 unless a
   reviewed roadmap amendment changes the canonical roadmap with new evidence.
+- Every public implemented/proven claim in README and `PROOF_STATUS.md` must be
+  represented by the feature IDs in `contracts/project.json`.
+- A deferred feature may not be moved into the current feature list without the
+  owning milestone, normative semantics, tests, proof IDs, and reviewed roadmap
+  change.
+- The project-contract checker remains offline and may not resolve remote
+  schemas, download packages, or modify repository files.
 
 ## Required feature workflow
 
@@ -90,22 +104,27 @@ new amendment also updates that roadmap.
 2. Capture authoritative source evidence and classify external components.
 3. Write or update normative grammar, typing, evaluation, effect, ownership,
    runtime, diagnostic, formatter, target, and non-goal contracts.
-4. Implement every affected compiler stage vertically.
-5. Run all proof categories and previous regressions.
-6. Add the benchmark delta without rewriting historical results.
-7. Run separate Agent B review.
-8. Produce exact-PR Evidence and a known-unproven list.
+4. Update `contracts/project.json` and public claim blocks when the proven
+   project state changes.
+5. Implement every affected compiler stage vertically.
+6. Run all proof categories and previous regressions.
+7. Add the benchmark delta without rewriting historical results.
+8. Run separate Agent B review.
+9. Produce exact-PR Evidence and a known-unproven list.
 
 ## Verification
 
-Current repository proof:
+Install the exact direct proof dependency, run the read-only contract gate, and
+then run the canonical repository proof:
 
 ```bash
+python3 -m pip install -r requirements-proof.txt
+python3 tools/check_project_contract.py
 python3 run_repo_proof.py
 ```
 
-After the Rust bootstrap and MVP gates are introduced, use the canonical
-commands named by `MVP_ROADMAP.md` and the repository workflow. The proof command
-must produce a passing manifest and Evidence ZIP. Generated binaries, benchmark
-raw outputs, and archives belong in Evidence or benchmark artifacts, not source
-commits unless a specification explicitly requires a small fixture.
+The repository proof must include a passing project-contract report, unit and
+integration tests, Agent B report, native differential evidence, manifest, and
+deterministic Evidence ZIP. Generated binaries, benchmark raw outputs, and
+archives belong in Evidence or benchmark artifacts, not source commits unless a
+specification explicitly requires a small fixture.

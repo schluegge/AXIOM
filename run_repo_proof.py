@@ -9,6 +9,7 @@ import zipfile
 from hashlib import sha256
 from pathlib import Path
 
+from axiom_contract import check_project_contract, render_text
 from axiom_proof.arithmetic import PANIC_NAMES
 from axiom_proof.driver import canonical_json, compile_source, prove
 
@@ -56,6 +57,11 @@ def main() -> int:
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
     ZIP.unlink(missing_ok=True)
+
+    contract_result = check_project_contract(ROOT)
+    (OUT / "project-contract.json").write_text(canonical_json(contract_result), encoding="utf-8")
+    (OUT / "project-contract.txt").write_text(render_text(contract_result), encoding="utf-8")
+    require(contract_result["status"] == "passed", "project contract consistency gate failed")
 
     tests = run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"])
     normalized_test_stdout = normalize_test_log(tests.stdout)
@@ -212,6 +218,15 @@ def main() -> int:
         "document_kind": "axiom.repo-proof",
         "schema_version": "0.7.0",
         "status": "passed",
+        "project_contract": {
+            "status": contract_result["status"],
+            "exit_code": contract_result["exit_code"],
+            "validator": contract_result["validator"],
+            "dependencies": contract_result["dependencies"],
+            "current_features": contract_result["counts"]["current_features"],
+            "deferred_features": contract_result["counts"]["deferred_features"],
+            "findings": contract_result["counts"]["findings"],
+        },
         "unit_test_exit_code": tests.returncode,
         "unit_tests": test_count,
         "agent_b": {
@@ -258,6 +273,7 @@ def main() -> int:
             "status": "passed",
             "schema_version": "0.7.0",
             "evidence_zip": ZIP.as_posix(),
+            "project_contract": contract_result["status"],
             "unit_tests": test_count,
             "agent_b_checks": agent_b_report["passed"],
             "differential_cases": len(cases),
