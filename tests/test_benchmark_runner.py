@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -10,12 +11,20 @@ from pathlib import Path
 from unittest.mock import patch
 
 from axiom_bench import RunnerError, assert_local_trust, replay_conformance, run_conformance
-from axiom_bench.bundle import safe_zip_entries, sha256_file
+from axiom_bench.bundle import (
+    canonical_json,
+    safe_relative_path,
+    safe_zip_entries,
+    semantic_sha256,
+    sha256_bytes,
+    sha256_file,
+)
 from axiom_bench.executor import execute_bounded, minimal_environment
 from axiom_bench.runner import expand_command
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = ROOT / "tests" / "fixtures" / "benchmark_runner" / "task.json"
+FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "benchmark_runner"
+FIXTURE = FIXTURE_ROOT / "task.json"
 
 
 class BenchmarkRunnerTests(unittest.TestCase):
@@ -31,6 +40,51 @@ class BenchmarkRunnerTests(unittest.TestCase):
             output_directory=output,
         )
         return result
+
+    def copied_fixture(self) -> tuple[tempfile.TemporaryDirectory[str], Path, Path]:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        base = Path(temporary.name)
+        task_root = base / "task"
+        shutil.copytree(FIXTURE_ROOT, task_root)
+        return temporary, task_root / "task.json", base / "output"
+
+    def modify_task(self, mutator):
+        _, task_path, output = self.copied_fixture()
+        document = json.loads(task_path.read_text(encoding="utf-8"))
+        mutator(document)
+        task_path.write_text(canonical_json(document), encoding="utf-8")
+        return task_path, output
+
+    def rewrite_bundle_report_path(self, bundle: Path, value: str) -> Path:
+        destination = bundle.with_name(f"tampered-{len(value)}.zip")
+        with zipfile.ZipFile(bundle, "r") as source:
+            files = {info.filename: source.read(info) for info in source.infolist()}
+
+        report = json.loads(files["conformance-report.json"])
+        report["attempt_path"] = value
+        files["conformance-report.json"] = canonical_json(report).encode("utf-8")
+
+        manifest = json.loads(files["bundle-manifest.json"])
+        report_bytes = files["conformance-report.json"]
+        manifest["files"]["conformance-report.json"] = {
+            "sha256": sha256_bytes(report_bytes),
+            "size_bytes": len(report_bytes),
+        }
+        semantic_payload = {
+            "bundle_kind": manifest["bundle_kind"],
+            "task_id": manifest["task_id"],
+            "language": manifest["language"],
+            "adapter": manifest["adapter"],
+            "files": manifest["files"],
+        }
+        manifest["semantic_sha256"] = semantic_sha256(semantic_payload)
+        files["bundle-manifest.json"] = canonical_json(manifest).encode("utf-8")
+
+        with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, payload in sorted(files.items()):
+                archive.writestr(name, payload)
+        return destination
 
     def test_reference_conformance_passes_for_all_variant_keys(self) -> None:
         for language in ("axiom", "rust", "zig", "go"):
@@ -97,6 +151,18 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.assertEqual(report["status"], "failed")
         self.assertIn("AX-BENCH-REPLAY-TAMPERED", {item["code"] for item in report["findings"]})
 
+    def test_replay_rejects_unsafe_internal_report_paths_even_with_updated_manifest(self) -> None:
+        result = self.run_fixture("reference")
+        for unsafe in ("../outside.json", "C:/outside.json", "nested//attempt.json"):
+            with self.subTest(path=unsafe):
+                tampered = self.rewrite_bundle_report_path(result.bundle_path, unsafe)
+                report = replay_conformance(ROOT, tampered)
+                self.assertEqual(report["status"], "failed", report)
+                self.assertTrue(
+                    any("unsafe conformance-report.attempt_path" in item["message"] for item in report["findings"]),
+                    report,
+                )
+
     def test_untrusted_local_execution_is_rejected_before_workspace_or_process(self) -> None:
         with self.assertRaises(RunnerError) as context:
             assert_local_trust("untrusted_model_output")
@@ -116,6 +182,117 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.assertEqual(
             context.exception.finding.code, "AX-BENCH-RUNNER-UNKNOWN-PLACEHOLDER"
         )
+
+    def test_existing_output_directory_is_rejected_without_deletion(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        output = Path(temporary.name) / "existing"
+        output.mkdir()
+        marker = output / "keep.txt"
+        marker.write_text("keep\n", encoding="utf-8")
+        with self.assertRaises(RunnerError) as context:
+            run_conformance(
+                ROOT,
+                FIXTURE,
+                language="axiom",
+                adapter="reference",
+                output_directory=output,
+            )
+        self.assertEqual(context.exception.finding.code, "AX-BENCH-RUNNER-INVALID-PATH")
+        self.assertEqual(marker.read_text(encoding="utf-8"), "keep\n")
+
+    def test_missing_candidate_path_is_rejected_by_runner_boundary(self) -> None:
+        def mutate(document):
+            del document["variants"]["axiom"]["candidate_path"]
+
+        task_path, output = self.modify_task(mutate)
+        with self.assertRaises(RunnerError) as context:
+            run_conformance(
+                ROOT,
+                task_path,
+                language="axiom",
+                adapter="reference",
+                output_directory=output,
+            )
+        self.assertEqual(context.exception.finding.code, "AX-BENCH-RUNNER-INVALID-TASK")
+
+    def test_runner_records_process_start_failure(self) -> None:
+        def mutate(document):
+            document["variants"]["axiom"]["formatter_command"] = [
+                "axiom-command-that-does-not-exist"
+            ]
+
+        task_path, output = self.modify_task(mutate)
+        result = run_conformance(
+            ROOT,
+            task_path,
+            language="axiom",
+            adapter="reference",
+            output_directory=output,
+        )
+        self.assertFalse(result.conformance_passed)
+        self.assertEqual(result.failure_reason, "runner_error")
+        record = json.loads(
+            (output / "canonical" / "commands" / "c01.format.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(record["termination"], "not_started")
+        self.assertIsNone(record["return_code"])
+
+    def test_runner_enforces_compiler_invocation_budget(self) -> None:
+        def mutate(document):
+            document["budgets"]["max_compiler_invocations"] = 1
+
+        task_path, output = self.modify_task(mutate)
+        result = run_conformance(
+            ROOT,
+            task_path,
+            language="axiom",
+            adapter="reference",
+            output_directory=output,
+        )
+        self.assertFalse(result.conformance_passed)
+        self.assertEqual(result.failure_reason, "resource_limit")
+        self.assertEqual(result.report["actual_failure_reason"], "resource_limit")
+
+    def test_runner_enforces_feedback_budget(self) -> None:
+        def mutate(document):
+            document["budgets"]["max_feedback_bytes"] = 1
+            document["variants"]["axiom"]["formatter_command"] = [
+                "{python}",
+                "-c",
+                "print('feedback')",
+            ]
+
+        task_path, output = self.modify_task(mutate)
+        result = run_conformance(
+            ROOT,
+            task_path,
+            language="axiom",
+            adapter="reference",
+            output_directory=output,
+        )
+        self.assertFalse(result.conformance_passed)
+        self.assertEqual(result.failure_reason, "resource_limit")
+
+    def test_runner_enforces_total_task_timeout(self) -> None:
+        def mutate(document):
+            document["budgets"]["task_timeout_seconds"] = 1
+            document["variants"]["axiom"]["formatter_command"] = [
+                "{python}",
+                "-c",
+                "import time; time.sleep(30)",
+            ]
+
+        task_path, output = self.modify_task(mutate)
+        result = run_conformance(
+            ROOT,
+            task_path,
+            language="axiom",
+            adapter="reference",
+            output_directory=output,
+        )
+        self.assertFalse(result.conformance_passed)
+        self.assertEqual(result.failure_reason, "timeout")
 
     def test_bounded_executor_enforces_combined_output_limit(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -167,6 +344,11 @@ class BenchmarkRunnerTests(unittest.TestCase):
             with zipfile.ZipFile(path, "r") as archive:
                 with self.assertRaises(ValueError):
                     safe_zip_entries(archive)
+
+    def test_safe_relative_path_rejects_noncanonical_and_windows_paths(self) -> None:
+        for value in ("a//b", "a/./b", "C:/outside", "file:stream", "a\\b"):
+            with self.subTest(path=value), self.assertRaises(ValueError):
+                safe_relative_path(value)
 
     def test_bundle_hash_matches_file_bytes(self) -> None:
         result = self.run_fixture("reference")
