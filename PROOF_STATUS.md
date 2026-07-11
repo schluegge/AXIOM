@@ -21,7 +21,7 @@ The complete public proven-language claim surface is checked against
 
 - project contract: 8 current capabilities, 14 deferred features, 0 findings;
 - benchmark contract: 8 schemas, 0 findings;
-- unit/integration suite: 103/103;
+- unit/integration suite: 109/109;
 - Agent B release-blocking checks: 73/73;
 - interpreter/native differential corpus: 38/38;
 - stable invalid fixture matrix: 52/52;
@@ -59,10 +59,14 @@ The proof establishes:
 - per-command and total-task timeout handling;
 - combined output, cumulative feedback, invocation, candidate-byte, file, and
   changed-line limits;
-- structured Evidence for process-start failure;
+- structured Evidence for process-start and output-directory creation failures;
 - raw versus canonical Evidence separation;
-- byte-identical repeated reference bundles;
-- canonical ZIP path, collision, symlink, encryption, count, and size checks;
+- canonical stdout/stderr normalization of temporary workspace and task roots;
+- byte-identical repeated reference bundles even when a command emits absolute
+  temporary paths;
+- canonical ZIP path, collision, symlink, encryption, count, declared-size, and
+  actual-decompressed-size checks;
+- replay conversion of malformed or memory-exhausting input into failed reports;
 - replay validation of internal paths, schemas, identities, hashes, sizes, and
   trace sequence numbers;
 - direct verification of candidate bytes against raw/extracted attempt hashes;
@@ -70,6 +74,7 @@ The proof establishes:
   stream sizes, retained budgets, and trace terminal events;
 - cross-checking of derived results against attempt outcomes, report decisions,
   check-result trace events, and the score-decision event;
+- exact agreement between attempt and conformance-report failure-reason enums;
 - adversarial rejection when an attacker repairs the manifest/hash chain after
   replacing the candidate or rewriting an acceptance command result;
 - replay with zero subprocesses;
@@ -131,8 +136,10 @@ whole-local-root granularity. The LLVM path contains no reference `inttoptr`,
 
 ## Evidence reproducibility
 
-The repository proof normalizes declared volatile timestamps, durations, and
-temporary paths while retaining candidate bytes, arguments, outputs, exit
-codes, limits, outcomes, diagnostics, native results, dependency versions, and
-review reports. Final capability completion requires exact-head Evidence and a
-second independent run with the same inner Evidence digest.
+The repository proof normalizes declared volatile timestamps, durations,
+temporary paths in metadata, and temporary roots embedded in canonical command
+streams. It retains candidate bytes, normalized command arguments and streams,
+exit codes, limits, outcomes, diagnostics, native results, dependency versions,
+and review reports. Raw Evidence retains original command streams outside the
+canonical bundle. Final capability completion requires exact-head Evidence and
+a second independent run with the same inner Evidence digest.
