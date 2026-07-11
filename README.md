@@ -55,6 +55,12 @@ timeouts plus output, feedback, invocation, candidate-byte, file, and
 changed-line limits. Local model-generated candidates remain blocked pending an
 approved isolated backend.
 
+Replay verifies candidate bytes against retained attempt hashes and derives
+phase outcomes and failure reasons from command records, stream sizes, limits,
+and trace terminal events instead of trusting stored outcome flags. The
+repository proof attacks both candidate replacement and command-result
+rewriting after the attacker repairs the manifest and internal hash chain.
+
 The repository proof uses a synthetic four-language-key fixture to prove runner
 mechanics: reference success, exact seeded-wrong rejection, byte-identical
 reference bundles, tamper detection, and replay without a subprocess. This is
@@ -78,7 +84,7 @@ The canonical command creates:
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
 
-The current proof target includes 101 unit/integration tests, 73 separate Agent
+The current proof target includes 103 unit/integration tests, 73 separate Agent
 B checks, trusted conformance and replay bundles, 38 interpreter/native cases,
 52 invalid fixtures, and deterministic Evidence.
 
