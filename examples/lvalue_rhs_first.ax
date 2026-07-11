@@ -1,0 +1,8 @@
+profile system;
+
+fn main() -> i32 {
+    var values: [i32; 2] = [1, 2];
+    let index: i32 = 2;
+    values[index] = 1 / 0;
+    return 0;
+}

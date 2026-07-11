@@ -18,11 +18,12 @@ from .type_system import (
 from .semantic_model import FunctionSignature, LocalBinding
 from .semantic_blocks import SemanticBlockMixin
 from .semantic_statements import SemanticStatementMixin
+from .semantic_lvalues import SemanticLValueMixin
 from .semantic_expressions import SemanticExpressionMixin
 from .semantic_documents import SemanticDocumentMixin
 
 
-class SemanticAnalyzer(SemanticBlockMixin, SemanticStatementMixin, SemanticExpressionMixin, SemanticDocumentMixin):
+class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatementMixin, SemanticExpressionMixin, SemanticDocumentMixin):
     def __init__(self, program: Node):
         self.program = program
         self.diagnostics: list[Diagnostic] = []
@@ -131,6 +132,8 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticStatementMixin, SemanticExpre
                 "aggregate_literals": 0,
                 "field_accesses": 0,
                 "index_accesses": 0,
+                "field_writes": 0,
+                "index_writes": 0,
             }
 
     def resolve_local(self, scopes: list[dict[str, LocalBinding]], name: str) -> LocalBinding | None:

@@ -160,3 +160,41 @@ Proof boundary:
 Context7 established the LLVM contracts. Clang execution, the independent C
 layout probe, the LLVM GEP layout probe, and interpreter/native differential
 programs establish the local executable evidence.
+
+
+## Structured l-value LLVM lowering — v0.6.0
+
+Context7 library:
+
+```text
+/llvm/llvm-project
+```
+
+Official source documents:
+
+- `llvm/docs/LangRef.rst`
+- `llvm/docs/GetElementPtr.rst`
+
+Captured contracts:
+
+- GEP computes an address and does not itself access memory.
+- The leading GEP index steps through the pointer operand.
+- Struct field indices are constant `i32` values.
+- Array indices may be dynamic integer values.
+- Nested structs and arrays can be addressed through chained GEP operations.
+- LLVM does not implement AXIOM's checked-indexing policy; AXIOM must branch to
+  its runtime failure boundary before executing a dynamic GEP.
+- `store` writes a value of the matching pointee representation through the
+  computed pointer.
+
+Implementation use:
+
+- `axiom_proof/llvm_lvalues.py`
+- `axiom_proof/llvm_statements.py`
+
+Proofs:
+
+- write guard before GEP before store
+- direct field leaf store
+- nested GEP chain
+- no whole-struct rewrite after a field assignment

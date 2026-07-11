@@ -1,0 +1,11 @@
+profile system;
+
+fn selected_index() -> i32 {
+    return 1;
+}
+
+fn main() -> i32 {
+    var values: [i32; 3] = [10, 20, 30];
+    values[selected_index()] = 2;
+    return values[0] + values[1] + values[2];
+}

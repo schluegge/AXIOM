@@ -1,0 +1,15 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+fn mutate(pair: Pair) -> i32 {
+    pair.left = 3;
+    return pair.left;
+}
+
+fn main() -> i32 {
+    return mutate(Pair { left: 1, right: 2 });
+}

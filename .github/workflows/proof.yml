@@ -59,20 +59,3 @@ jobs:
             evidence/ci-diagnostics/
           if-no-files-found: error
           retention-days: 14
-
-      - name: Upload exact source snapshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: axiom-source-${{ github.run_id }}
-          path: |
-            .github/
-            agents/
-            axiom_proof/
-            examples/
-            runtime/
-            tests/
-            *.py
-            *.md
-          if-no-files-found: error
-          retention-days: 1

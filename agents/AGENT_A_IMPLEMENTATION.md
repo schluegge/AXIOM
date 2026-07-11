@@ -1,32 +1,32 @@
 # Agent A Implementation Record
 
-Version: 0.5.0
+Version: 0.6.0
 
 ## Goal
 
-Implement structs and fixed arrays as one complete compiler slice.
+Implement structured l-value mutation as one complete compiler slice.
 
 ## Stages changed
 
-- lexer, parser, AST, formatter
-- type registry and semantic analysis
-- layout engine and CLI inspection
-- HIR and effect facts
-- interpreter
-- LLVM backend
-- runtime bounds faults
-- tests and proof runner
+- statement parser and assignment AST
+- canonical formatter
+- semantic l-value resolution and diagnostics
+- symbols, effects, HIR, and ownership facts
+- functional aggregate updates in the interpreter
+- direct pointer/GEP/store lowering in LLVM
+- valid, invalid, generated, differential, and reproducibility tests
 
 ## Result
 
-- 31/31 unit/integration tests passed
-- structs/arrays execute identically in interpreter and native code
-- aggregate values pass and return by value
-- dynamic indices are guarded before LLVM GEP
-- layout agrees across Axiom, C, and LLVM
-- simple struct-by-value C ABI round trip returns 42
+- 40/40 unit/integration tests passed
+- field, array, dynamic-index, and nested writes match natively
+- OOB writes match panic identity/code 108
+- copy-by-value isolation remains intact
+- RHS-before-target and once-only index evaluation are proven
+- direct scalar leaf stores avoid whole-aggregate rewrites
 
 ## Known limits
 
-No subobject mutation, slices, references, borrowing, heap ownership, packed
-layout, aggregate equality, or broad platform ABI claim.
+No references, borrowing, slices, pointer syntax, heap ownership, compound or
+destructuring assignment, mutation through temporaries, packed layout, or broad
+platform ABI claim.

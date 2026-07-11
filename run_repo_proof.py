@@ -103,6 +103,14 @@ def main() -> int:
         "layout-value": ("layout.ax", 39, None),
         "bounds-upper": ("array_oob_runtime.ax", 108, "array_index_out_of_bounds"),
         "bounds-negative": ("negative_index_runtime.ax", 108, "array_index_out_of_bounds"),
+        "lvalue-field": ("lvalue_field.ax", 42, None),
+        "lvalue-array": ("lvalue_array.ax", 52, None),
+        "lvalue-dynamic": ("lvalue_dynamic.ax", 42, None),
+        "lvalue-nested": ("lvalue_nested.ax", 40, None),
+        "lvalue-copy": ("lvalue_copy_independence.ax", 23, None),
+        "lvalue-index-once": ("lvalue_index_once.ax", 42, None),
+        "lvalue-oob-write": ("lvalue_oob_write.ax", 108, "array_index_out_of_bounds"),
+        "lvalue-rhs-first": ("lvalue_rhs_first.ax", 104, "i32_divide_by_zero"),
     }
     results: dict[str, object] = {}
     for name, (fixture, expected_exit, expected_panic) in cases.items():
@@ -137,6 +145,18 @@ def main() -> int:
         "invalid_unknown_struct_type.ax": "AX-TYPE-0013",
         "invalid_recursive_struct.ax": "AX-TYPE-0014",
         "invalid_aggregate_equality.ax": "AX-TYPE-0015",
+        "invalid_lvalue_temporary.ax": "AX-MUT-0002",
+        "invalid_lvalue_immutable_field.ax": "AX-MUT-0001",
+        "invalid_lvalue_immutable_index.ax": "AX-MUT-0001",
+        "invalid_lvalue_type.ax": "AX-TYPE-0011",
+        "invalid_lvalue_field_base.ax": "AX-STRUCT-0008",
+        "invalid_lvalue_unknown_field.ax": "AX-STRUCT-0009",
+        "invalid_lvalue_index_base.ax": "AX-INDEX-0002",
+        "invalid_lvalue_index_type.ax": "AX-INDEX-0003",
+        "invalid_lvalue_constant_oob.ax": "AX-INDEX-0001",
+        "invalid_lvalue_parameter.ax": "AX-MUT-0001",
+        "invalid_lvalue_temporary_field.ax": "AX-MUT-0002",
+        "invalid_lvalue_binary.ax": "AX-MUT-0002",
     }
     invalid_documents: dict[str, list[str]] = {}
     for fixture, expected_code in invalid_expected.items():
@@ -157,7 +177,7 @@ def main() -> int:
 
     manifest = {
         "document_kind": "axiom.repo-proof",
-        "schema_version": "0.5.0",
+        "schema_version": "0.6.0",
         "status": "passed",
         "unit_test_exit_code": tests.returncode,
         "unit_tests": test_count,
@@ -178,8 +198,8 @@ def main() -> int:
         "layout": layout_document,
         "panic_code_map": {str(code): name for code, name in sorted(PANIC_NAMES.items())},
         "known_unproven": [
-            "aggregate field or element mutation",
-            "slices, references, borrowing, and owned-resource semantics",
+            "references, borrowing, and owned-resource semantics",
+            "slices and pointer syntax",
             "broad cross-platform ABI stability",
             "complete effects and capability system",
             "Rust bootstrap parity",
@@ -201,7 +221,7 @@ def main() -> int:
     print(
         canonical_json({
             "status": "passed",
-            "schema_version": "0.5.0",
+            "schema_version": "0.6.0",
             "evidence_zip": ZIP.as_posix(),
             "unit_tests": test_count,
             "agent_b_checks": agent_b_report["passed"],

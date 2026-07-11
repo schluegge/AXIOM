@@ -200,3 +200,7 @@ A second proof compiles Axiom functions that return and consume `Pair` by value,
 then calls them from C. `make_pair(20, 22)` followed by `sum_pair(pair)` returns
 42. This proves the current simple struct-by-value C ABI path on the documented
 target; it is not a blanket promise for every aggregate or platform ABI.
+
+## v0.6 mutation extension
+
+Structured field and fixed-array element mutation is now defined separately in `MUTATION_SEMANTICS.md`. Aggregate values remain copy-by-value; the extension adds mutable-root l-values rather than reference aliasing.

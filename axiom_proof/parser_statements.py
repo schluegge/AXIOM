@@ -23,9 +23,18 @@ class StatementParserMixin:
             return self.parse_while()
         if self.at("if"):
             return self.parse_if()
-        if self.at("identifier") and self.peek_kind() == "equal":
-            return self.parse_assignment()
+
         expression = self.parse_expression()
+        if self.accept("equal") is not None:
+            value = self.parse_expression()
+            end = self.expect("semicolon", "expected ';' after assignment")
+            return self.node(
+                "AssignmentStmt",
+                expression.span,
+                end.span,
+                target=expression,
+                value=value,
+            )
         end = self.expect("semicolon", "expected ';' after expression")
         return self.node("ExprStmt", expression.span, end.span, expression=expression)
 
@@ -45,19 +54,6 @@ class StatementParserMixin:
             type_name=type_name,
             value=value,
             mutable=mutable,
-        )
-
-    def parse_assignment(self) -> Node:
-        target = self.expect("identifier", "expected assignment target")
-        self.expect("equal", "expected '=' in assignment")
-        value = self.parse_expression()
-        end = self.expect("semicolon", "expected ';' after assignment")
-        return self.node(
-            "AssignmentStmt",
-            target.span,
-            end.span,
-            target=target.lexeme,
-            value=value,
         )
 
     def parse_return(self) -> Node:
@@ -90,4 +86,3 @@ class StatementParserMixin:
             then_block=then_block,
             else_block=else_block,
         )
-

@@ -40,34 +40,23 @@ class SemanticStatementMixin:
                     if mutable:
                         self.function_facts[function_name]["mutable_bindings"] += 1
                 elif statement.kind == "AssignmentStmt":
-                    target_name = statement.fields["target"]
-                    binding = self.resolve_local(scopes, target_name)
+                    target = statement.fields["target"]
+                    binding, target_type = self.type_lvalue(target, scopes, function_name)
                     actual = self.type_expr(statement.fields["value"], scopes, function_name)
-                    if binding is None:
-                        self.error("AX-NAME-0001", f"unresolved assignment target: {target_name}", statement, "resolver")
-                    else:
-                        self.references.append(
-                            {
-                                "node_id": statement.node_id,
-                                "name": target_name,
-                                "kind": "assignment",
-                                "target_node_id": binding.node_id,
-                            }
+                    if binding is not None and not binding.mutable:
+                        self.error(
+                            "AX-MUT-0001",
+                            f"cannot assign through immutable binding: {binding.name}",
+                            target,
+                            "type_checker",
                         )
-                        if not binding.mutable:
-                            self.error(
-                                "AX-MUT-0001",
-                                f"cannot assign to immutable binding: {target_name}",
-                                statement,
-                                "type_checker",
-                            )
-                        if actual != "error" and actual != binding.type_name:
-                            self.error(
-                                "AX-TYPE-0011",
-                                f"assignment type mismatch: expected {binding.type_name}, found {actual}",
-                                statement,
-                                "type_checker",
-                            )
+                    if target_type != "error" and actual != "error" and actual != target_type:
+                        self.error(
+                            "AX-TYPE-0011",
+                            f"assignment type mismatch: expected {target_type}, found {actual}",
+                            statement,
+                            "type_checker",
+                        )
                     self.function_facts[function_name]["assignments"] += 1
                 elif statement.kind == "ReturnStmt":
                     actual = self.type_expr(statement.fields["value"], scopes, function_name)
