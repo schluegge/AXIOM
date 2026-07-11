@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/benchmarks/schemas/0.1.0/contract.schema.json",
+  "title": "AXIOM-Bench 0.1 contract registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "schema_version",
+    "benchmark_series",
+    "status",
+    "active_milestone",
+    "specification_path",
+    "preregistration_path",
+    "source_evidence_path",
+    "schema_paths",
+    "required_lanes",
+    "required_conformance_adapters",
+    "trust_classes",
+    "untrusted_local_execution",
+    "claim_policy"
+  ],
+  "properties": {
+    "document_kind": {"const": "axiom.bench.contract"},
+    "schema_version": {"const": "0.1.0"},
+    "benchmark_series": {"const": "0.1.x"},
+    "status": {"enum": ["proposed", "frozen", "retired"]},
+    "active_milestone": {"const": "M1"},
+    "specification_path": {"$ref": "#/$defs/path"},
+    "preregistration_path": {"$ref": "#/$defs/path"},
+    "source_evidence_path": {"$ref": "#/$defs/path"},
+    "schema_paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "suite", "task", "language_pack", "toolchains", "attempt", "run", "trace_event"],
+      "properties": {
+        "contract": {"$ref": "#/$defs/path"},
+        "suite": {"$ref": "#/$defs/path"},
+        "task": {"$ref": "#/$defs/path"},
+        "language_pack": {"$ref": "#/$defs/path"},
+        "toolchains": {"$ref": "#/$defs/path"},
+        "attempt": {"$ref": "#/$defs/path"},
+        "run": {"$ref": "#/$defs/path"},
+        "trace_event": {"$ref": "#/$defs/path"}
+      }
+    },
+    "required_lanes": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 3,
+      "items": {"enum": ["language_only", "compiler_assisted", "full_agent"]},
+      "allOf": [
+        {"contains": {"const": "language_only"}},
+        {"contains": {"const": "compiler_assisted"}},
+        {"contains": {"const": "full_agent"}}
+      ]
+    },
+    "required_conformance_adapters": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 3,
+      "items": {"enum": ["reference", "seeded_wrong", "replay"]},
+      "allOf": [
+        {"contains": {"const": "reference"}},
+        {"contains": {"const": "seeded_wrong"}},
+        {"contains": {"const": "replay"}}
+      ]
+    },
+    "trust_classes": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 4,
+      "items": {"enum": ["trusted_reference", "trusted_seeded_wrong", "replay_only", "untrusted_model_output"]},
+      "allOf": [
+        {"contains": {"const": "trusted_reference"}},
+        {"contains": {"const": "trusted_seeded_wrong"}},
+        {"contains": {"const": "replay_only"}},
+        {"contains": {"const": "untrusted_model_output"}}
+      ]
+    },
+    "untrusted_local_execution": {"const": "forbidden"},
+    "claim_policy": {"const": "seed_cannot_prove_ai_first_superiority"}
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    }
+  }
+}
