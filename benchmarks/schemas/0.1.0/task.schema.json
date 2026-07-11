@@ -127,7 +127,6 @@
       "required": [
         "language",
         "language_pack_id",
-        "candidate_path",
         "starter_path",
         "reference_solution_path",
         "seeded_wrong_paths",
