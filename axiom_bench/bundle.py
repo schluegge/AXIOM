@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import stat
+import unicodedata
 import zipfile
 from hashlib import sha256
 from pathlib import Path, PurePosixPath
@@ -44,19 +45,28 @@ def semantic_sha256(value: Any, excluded_keys: frozenset[str] = frozenset()) -> 
 
 
 def safe_relative_path(value: str) -> PurePosixPath:
-    if not value or "\\" in value:
+    if not isinstance(value, str) or not value:
+        raise ValueError("path must be a non-empty string")
+    if "\x00" in value or "\\" in value:
         raise ValueError("path must be a non-empty POSIX path")
     path = PurePosixPath(value)
-    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+    if path.as_posix() != value:
+        raise ValueError("path must use exact normalized POSIX spelling")
+    if path.is_absolute() or not path.parts:
         raise ValueError("path must be normalized and repository-relative")
+    if any(part in {"", ".", ".."} for part in path.parts):
+        raise ValueError("path must be normalized and repository-relative")
+    if any(":" in part for part in path.parts):
+        raise ValueError("path may not contain a Windows drive or alternate-stream separator")
     return path
 
 
 def safe_join(root: Path, value: str) -> Path:
     relative = safe_relative_path(value)
-    candidate = root.joinpath(*relative.parts)
+    resolved_root = root.resolve()
+    candidate = resolved_root.joinpath(*relative.parts)
     try:
-        candidate.resolve().relative_to(root.resolve())
+        candidate.resolve().relative_to(resolved_root)
     except ValueError as error:
         raise ValueError("path escapes declared root") from error
     return candidate
@@ -150,6 +160,7 @@ def build_manifest(
         relative = path.relative_to(canonical_root).as_posix()
         if relative == "bundle-manifest.json":
             continue
+        safe_relative_path(relative)
         files[relative] = {
             "sha256": sha256_file(path),
             "size_bytes": path.stat().st_size,
@@ -193,12 +204,21 @@ def safe_zip_entries(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
     if len(entries) > MAX_REPLAY_ENTRIES:
         raise ValueError("ZIP entry count exceeds replay limit")
     names: set[str] = set()
+    portable_names: set[str] = set()
     total = 0
     for entry in entries:
+        if entry.is_dir():
+            raise ValueError(f"ZIP directory entry is forbidden: {entry.filename}")
         path = safe_relative_path(entry.filename)
         if entry.filename in names:
             raise ValueError(f"duplicate ZIP path: {entry.filename}")
         names.add(entry.filename)
+        portable = unicodedata.normalize("NFC", entry.filename).casefold()
+        if portable in portable_names:
+            raise ValueError(f"portable ZIP path collision: {entry.filename}")
+        portable_names.add(portable)
+        if entry.flag_bits & 0x1:
+            raise ValueError(f"encrypted ZIP entry is forbidden: {entry.filename}")
         if entry.file_size > MAX_REPLAY_ENTRY_BYTES:
             raise ValueError(f"ZIP entry exceeds replay limit: {entry.filename}")
         total += entry.file_size
