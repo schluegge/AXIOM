@@ -36,7 +36,17 @@ jobs:
           clang --version
 
       - name: Run release-blocking repository proof
-        run: python3 run_repo_proof.py
+        shell: bash
+        run: |
+          mkdir -p evidence/ci-diagnostics
+          set +e
+          python3 run_repo_proof.py > evidence/ci-diagnostics/proof.stdout.txt 2> evidence/ci-diagnostics/proof.stderr.txt
+          status=$?
+          set -e
+          printf '%s\n' "$status" > evidence/ci-diagnostics/proof.exit-code.txt
+          cat evidence/ci-diagnostics/proof.stdout.txt
+          cat evidence/ci-diagnostics/proof.stderr.txt >&2
+          exit "$status"
 
       - name: Upload proof evidence
         if: always()
@@ -46,5 +56,6 @@ jobs:
           path: |
             evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
             evidence/repo-proof/
-          if-no-files-found: warn
+            evidence/ci-diagnostics/
+          if-no-files-found: error
           retention-days: 14
