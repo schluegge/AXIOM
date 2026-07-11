@@ -1,0 +1,10 @@
+profile system;
+
+fn add(left: &i32, right: &i32) -> i32 {
+    return *left + *right;
+}
+
+fn main() -> i32 {
+    var value: i32 = 21;
+    return add(&value, &value);
+}

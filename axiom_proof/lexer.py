@@ -5,7 +5,7 @@ from .source import SourceFile
 
 KEYWORDS = {
     word: word
-    for word in "profile import fn extern struct enum let var return while if else true false".split()
+    for word in "profile import fn extern struct enum let var mut return while if else true false".split()
 }
 
 PAIRS = {

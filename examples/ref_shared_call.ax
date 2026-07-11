@@ -1,0 +1,10 @@
+profile system;
+
+fn read(value: &i32) -> i32 {
+    return *value;
+}
+
+fn main() -> i32 {
+    var value: i32 = 42;
+    return read(&value);
+}

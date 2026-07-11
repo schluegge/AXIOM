@@ -1,0 +1,11 @@
+profile system;
+
+fn main() -> i32 {
+    var value: i32 = 40;
+    if true {
+        let reference: &mut i32 = &mut value;
+        *reference = 41;
+    }
+    value = value + 1;
+    return value;
+}

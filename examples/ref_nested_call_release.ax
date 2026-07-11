@@ -1,0 +1,16 @@
+profile system;
+
+fn bump(value: &mut i32) -> i32 {
+    *value = *value + 1;
+    return *value;
+}
+
+fn combine(before: i32, target: &mut i32) -> i32 {
+    *target = *target + before;
+    return *target;
+}
+
+fn main() -> i32 {
+    var value: i32 = 20;
+    return combine(bump(&mut value), &mut value);
+}

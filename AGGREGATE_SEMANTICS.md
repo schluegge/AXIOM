@@ -204,3 +204,11 @@ target; it is not a blanket promise for every aggregate or platform ABI.
 ## v0.6 mutation extension
 
 Structured field and fixed-array element mutation is now defined separately in `MUTATION_SEMANTICS.md`. Aggregate values remain copy-by-value; the extension adds mutable-root l-values rather than reference aliasing.
+
+## v0.7 reference extension
+
+`REFERENCE_SEMANTICS.md` permits scoped borrows of aggregate roots and their
+field/index subobjects. Aggregate values remain deep copy-by-value. A borrow
+aliases one existing root value; independent aggregate copies remain isolated.
+The v0.7 borrow checker conservatively locks the entire local root even when a
+single field or array element is borrowed.

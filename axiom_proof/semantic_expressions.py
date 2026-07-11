@@ -24,6 +24,16 @@ class SemanticExpressionMixin(
             result = self.type_aggregate_expr(expression, scopes, function_name)
         elif expression.kind == "BinaryExpr":
             result = self.type_binary_expr(expression, scopes, function_name)
+        elif expression.kind == "DerefExpr":
+            result = self.type_deref_expr(expression, scopes, function_name)
+        elif expression.kind == "BorrowExpr":
+            self.error(
+                "AX-REF-0005",
+                "borrow expressions are permitted only as reference initializers or reference arguments",
+                expression,
+                "borrow_checker",
+            )
+            result = "error"
         else:
             self.error(
                 "AX-TYPE-0010",

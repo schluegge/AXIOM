@@ -1,32 +1,33 @@
 # Agent A Implementation Record
 
-Version: 0.6.0
+Version: 0.7.0
 
 ## Goal
 
-Implement structured l-value mutation as one complete compiler slice.
+Implement safe, scoped, non-escaping shared and mutable references as one
+complete compiler slice.
 
 ## Stages changed
 
-- statement parser and assignment AST
-- canonical formatter
-- semantic l-value resolution and diagnostics
-- symbols, effects, HIR, and ownership facts
-- functional aggregate updates in the interpreter
-- direct pointer/GEP/store lowering in LLVM
-- valid, invalid, generated, differential, and reproducibility tests
+- reference type, borrow, and dereference parser surface
+- canonical formatter and HIR
+- lexical whole-root borrow analysis and stable diagnostics
+- structured ownership/symbol/effect facts
+- interpreter runtime locations and alias-preserving calls
+- LLVM pointer parameters, pointer locals, GEP borrows, loads, and stores
+- valid, invalid, generated, differential, and determinism tests
 
-## Result
+## Result before final repository gate
 
-- 40/40 unit/integration tests passed
-- field, array, dynamic-index, and nested writes match natively
-- OOB writes match panic identity/code 108
-- copy-by-value isolation remains intact
-- RHS-before-target and once-only index evaluation are proven
-- direct scalar leaf stores avoid whole-aggregate rewrites
+- 51/51 unit/integration tests passed
+- 51/51 Agent-B adversarial checks passed
+- shared and mutable scalar/subobject references match natively
+- dynamic borrowed indices execute once and preserve panic 108
+- call argument loans obey left-to-right and nested-call lifetime rules
+- no pointer forging or null reference construction appears in LLVM
 
 ## Known limits
 
-No references, borrowing, slices, pointer syntax, heap ownership, compound or
-destructuring assignment, mutation through temporaries, packed layout, or broad
-platform ABI claim.
+No raw pointers, `unsafe`, reference returns, reference aggregate storage,
+reborrowing, lifetime parameters, non-lexical lifetimes, field-sensitive
+borrowing, slices, heap ownership, or broad platform ABI claim.

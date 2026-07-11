@@ -31,6 +31,29 @@ class StructDefinition:
         return None if index is None else self.fields[index]
 
 
+
+
+def reference_type(target_type: str, mutable: bool) -> str:
+    return f"&mut {target_type}" if mutable else f"&{target_type}"
+
+
+def parse_reference_type(type_name: str) -> tuple[str, bool] | None:
+    text = type_name.strip()
+    if text.startswith("&mut "):
+        target = text[5:].strip()
+        return (target, True) if target else None
+    if text.startswith("&"):
+        target = text[1:].strip()
+        return (target, False) if target else None
+    return None
+
+
+def contains_reference(type_name: str) -> bool:
+    if parse_reference_type(type_name) is not None:
+        return True
+    array = parse_array_type(type_name)
+    return array is not None and contains_reference(array[0])
+
 def array_type(element_type: str, length: int) -> str:
     return f"[{element_type}; {length}]"
 
@@ -84,8 +107,14 @@ class TypeRegistry:
     def is_known(self, type_name: str) -> bool:
         if type_name in PRIMITIVE_TYPES or type_name in self.structs:
             return True
+        reference = parse_reference_type(type_name)
+        if reference is not None:
+            return self.is_known(reference[0]) and not contains_reference(reference[0])
         array = parse_array_type(type_name)
         return array is not None and array[1] > 0 and self.is_known(array[0])
+
+    def is_value_type(self, type_name: str) -> bool:
+        return self.is_known(type_name) and not contains_reference(type_name)
 
     def struct(self, type_name: str) -> StructDefinition | None:
         return self.structs.get(type_name)

@@ -1,25 +1,27 @@
 # Agent B Adversarial Review Charter
 
-Version: 0.6.0
+Version: 0.7.0
 
 Agent B is a separate deterministic review process, not a second model
 instance. It blocks release on any failed check.
 
-Required structured-mutation checks:
+Required reference checks:
 
-- assignment target remains a nested expression AST/HIR
-- formatter reparses structured targets
-- root mutability and every stable diagnostic are enforced
-- field, array, dynamic, nested, and copy-isolation programs match natively
-- dynamic write OOB identity/code matches interpreter and native execution
-- RHS failure precedes l-value bounds failure
-- dynamic index expression executes exactly once
-- LLVM bounds guard precedes dynamic GEP and store
-- field and nested writes use direct leaf stores
-- symbols/effects/ownership expose write facts
-- generated valid/OOB write matrix passes
-- mutation compiler artifacts are deterministic
-- all aggregate/layout/C-ABI and arithmetic/control-flow regressions remain green
+- reference AST/types and formatter roundtrip
+- shared/mutable interpreter-native parity
+- field and array subobject borrows
+- non-null pointer lowering without `inttoptr`, `ptrtoint`, or null
+- stable conflict and escape diagnostics
+- borrow release at block and call-expression boundaries
+- left-to-right argument evaluation
+- mutable-reference loan linearity over complete argument lists
+- nested inner-call loan release and outer-loan retention
+- dynamic borrowed index evaluated exactly once
+- bounds guard before GEP and dereference
+- ownership/symbol/effect borrow facts
+- generated reference matrix
+- deterministic compiler artifacts
+- all v0.6 and earlier regressions remain green
 
 A failing assertion may only be changed when evidence proves that the assertion
 itself is invalid. The replacement must continue detecting the original defect

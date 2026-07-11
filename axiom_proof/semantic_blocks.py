@@ -23,13 +23,19 @@ class SemanticBlockMixin:
                 kind="parameter",
             )
         scopes = [parameter_scope]
-        self.analyze_block(
-            function.fields["body"],
-            scopes,
-            function.fields["return_type"],
-            function.fields["name"],
-            create_scope=False,
-        )
+        self.current_function_name = function.fields["name"]
+        self.borrow_scopes = [[]]
+        try:
+            self.analyze_block(
+                function.fields["body"],
+                scopes,
+                function.fields["return_type"],
+                function.fields["name"],
+                create_scope=False,
+            )
+        finally:
+            self.borrow_scopes = []
+            self.current_function_name = ""
 
     def report_binding_mismatch(self, declared: str, actual: str, node: Node) -> None:
         declared_array = parse_array_type(declared)

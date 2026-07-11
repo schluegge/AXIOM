@@ -180,3 +180,11 @@ This slice does not add:
 - destructuring assignment
 - packed structures or unions
 - concurrency or atomic mutation
+
+## v0.7 reference extension
+
+`REFERENCE_SEMANTICS.md` extends the l-value grammar with dereference targets.
+A write through `&mut T` stores into the referenced leaf. A write through `&T`
+is rejected. Direct writes to a root are rejected while conflicting borrows are
+live. Existing RHS-before-target and exactly-once index evaluation remain
+unchanged.

@@ -198,3 +198,46 @@ Proofs:
 - direct field leaf store
 - nested GEP chain
 - no whole-struct rewrite after a field assignment
+
+## LLVM scoped-reference lowering — v0.7.0
+
+Resolved library:
+
+```text
+/llvm/llvm-project
+```
+
+Authoritative material queried:
+
+- LLVM Language Reference memory instructions
+- `getelementptr` documentation
+- opaque `ptr` function parameters
+- stack object address lifetime across ordinary calls
+
+Captured contracts:
+
+- stack storage originates from `alloca`
+- struct/array subobject addresses are computed through GEP
+- reference parameters and local reference values may use opaque `ptr`
+- dereference reads and writes use `load` and `store`
+- an out-of-object GEP result may not be used for memory access
+- source-language bounds checks must precede dynamic checked access
+- local alloca pointers must not be passed through a tail call that can outlive
+  the storage; AXIOM emits ordinary calls for borrowed stack storage
+- LLVM does not implement AXIOM's borrow checker; exclusivity and lexical loan
+  rules remain frontend semantics unless future proven alias attributes are
+  added
+
+Implementation use:
+
+- `axiom_proof/llvm_reference_expressions.py`
+- `axiom_proof/llvm_lvalues.py`
+- `axiom_proof/llvm_support.py`
+- `axiom_proof/llvm_statements.py`
+
+Negative proof:
+
+- no `inttoptr`
+- no `ptrtoint`
+- no null reference construction
+- no `noalias` claim in this slice

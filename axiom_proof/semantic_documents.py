@@ -12,7 +12,7 @@ class SemanticDocumentMixin:
     def symbol_document(self) -> dict[str, Any]:
         return {
             "document_kind": "axiom.symbols",
-            "schema_version": "0.6.0",
+            "schema_version": "0.7.0",
             "structs": [
                 {
                     "name": definition.name,
@@ -40,14 +40,14 @@ class SemanticDocumentMixin:
     def type_document(self) -> dict[str, Any]:
         return {
             "document_kind": "axiom.types",
-            "schema_version": "0.6.0",
+            "schema_version": "0.7.0",
             "node_types": dict(sorted(self.node_types.items())),
         }
 
     def effect_document(self) -> dict[str, Any]:
         return {
             "document_kind": "axiom.effects",
-            "schema_version": "0.6.0",
+            "schema_version": "0.7.0",
             "functions": [
                 {
                     "name": name,
@@ -70,17 +70,28 @@ class SemanticDocumentMixin:
         index_writes = sum(facts["index_writes"] for facts in self.function_facts.values())
         return {
             "document_kind": "axiom.ownership",
-            "schema_version": "0.6.0",
-            "mode": "copy_values_with_explicit_local_mutation",
-            "borrows": [],
+            "schema_version": "0.7.0",
+            "mode": "copy_values_with_scoped_non_escaping_references",
+            "borrows": sorted(
+                self.borrow_events,
+                key=lambda item: (item["borrow_node_id"], item["root_name"], item["mutable"]),
+            ),
             "moves": [],
             "mutable_bindings": mutable_bindings,
             "assignments": assignments,
             "field_writes": field_writes,
             "index_writes": index_writes,
             "structured_lvalues": True,
-            "aggregate_semantics": "deep value copies with functional interpreter updates and direct LLVM subobject stores",
-            "proof": "no_owned_resource_types_exist_in_reference_subset",
+            "reference_policy": {
+                "non_null": True,
+                "lexical_scope": True,
+                "root_granularity": "whole local root",
+                "reference_returns": False,
+                "reference_aggregate_storage": False,
+                "reborrowing": False,
+            },
+            "aggregate_semantics": "deep value copies with direct borrowed subobject access",
+            "proof": "scoped references cannot escape the implemented local/call subset",
         }
 
     def layout_document(self, type_name: str, target: str = "x86_64-unknown-linux-gnu") -> dict[str, Any]:

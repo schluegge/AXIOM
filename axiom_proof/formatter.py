@@ -96,9 +96,23 @@ class Formatter:
         if expression.kind == "ArrayLiteral":
             return "[" + ", ".join(self.format_expr(item) for item in expression.fields["elements"]) + "]"
         if expression.kind == "FieldExpr":
-            return f"{self.format_expr(expression.fields['base'])}.{expression.fields['field']}"
+            base = self.format_expr(expression.fields["base"])
+            if expression.fields["base"].kind in {"DerefExpr", "BorrowExpr"}:
+                base = f"({base})"
+            return f"{base}.{expression.fields['field']}"
         if expression.kind == "IndexExpr":
-            return f"{self.format_expr(expression.fields['base'])}[{self.format_expr(expression.fields['index'])}]"
+            base = self.format_expr(expression.fields["base"])
+            if expression.fields["base"].kind in {"DerefExpr", "BorrowExpr"}:
+                base = f"({base})"
+            return f"{base}[{self.format_expr(expression.fields['index'])}]"
+        if expression.kind == "BorrowExpr":
+            prefix = "&mut " if expression.fields["mutable"] else "&"
+            return prefix + self.format_expr(expression.fields["target"])
+        if expression.kind == "DerefExpr":
+            reference = self.format_expr(expression.fields["reference"])
+            if expression.fields["reference"].kind == "BinaryExpr":
+                reference = f"({reference})"
+            return "*" + reference
         if expression.kind == "BinaryExpr":
             return (
                 f"({self.format_expr(expression.fields['left'])} "

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from .model import Node
-from .type_system import parse_array_type
+from .type_system import parse_array_type, parse_reference_type
 
 
 class LLVMSupportMixin:
@@ -15,6 +15,8 @@ class LLVMSupportMixin:
             return "i32"
         if type_name == "bool":
             return "i1"
+        if parse_reference_type(type_name) is not None:
+            return "ptr"
         array = parse_array_type(type_name)
         if array is not None:
             element_type, length = array
@@ -77,6 +79,9 @@ class LLVMSupportMixin:
 
         def inspect_lvalue(target: Node) -> None:
             if target.kind == "NameExpr":
+                return
+            if target.kind == "DerefExpr":
+                expressions.extend(self.walk_expr(target.fields["reference"]))
                 return
             if target.kind == "FieldExpr":
                 inspect_lvalue(target.fields["base"])

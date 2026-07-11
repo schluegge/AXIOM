@@ -1,52 +1,49 @@
-# Proof Status — v0.6.0
+# Proof Status — v0.7.0
 
-## Passed in the sandbox
+## Passed locally before the exact GitHub gate
 
-- unit/integration suite: **40/40**
-- Agent B release-blocking review: **42/42**
-- interpreter/native differential corpus: **24/24**
-- stable invalid fixture matrix: **33/33**
-- generated l-value matrix: **8 valid + 4 OOB**
-- Python bytecode compilation: passed
-- all v0.5.0 aggregate/layout/C-ABI regressions: passed
-- all v0.4.0 arithmetic/control-flow regressions: passed
+- unit/integration suite: **51/51**
+- Agent B release-blocking review: **51/51**
+- all v0.6 structured-mutation regressions: passed
+- all v0.5 aggregate/layout/C-ABI regressions: passed
+- all v0.4 arithmetic/control-flow regressions: passed
 
-## Structured mutation proofs
+## Scoped-reference proofs
 
-- assignment target is a structured AST, HIR, and symbol object
-- whole binding, field, array element, and nested writes
-- immutable root rejection for `let` and parameters
-- non-l-value temporary rejection
-- exact assigned-leaf type checking
-- dynamic write bounds check before LLVM GEP and store
-- panic identity `array_index_out_of_bounds`, code `108`
-- RHS fault precedes l-value bounds fault
-- each dynamic index expression evaluated exactly once
-- copy-by-value aggregates remain independent after subobject mutation
-- LLVM stores directly to the leaf pointer without rewriting the whole aggregate
-- structured write facts appear in symbols, effects, HIR, and ownership output
+- `&T`, `&mut T`, borrow expressions, dereference reads/writes
+- shared aliases coexist
+- mutable references provide exclusive access
+- immutable-root mutable borrow rejection
+- root reads/writes blocked during conflicting live borrows
+- reference returns and aggregate storage rejected
+- local reference lifetime ends at block boundary
+- direct call borrows cover complete left-to-right argument evaluation
+- existing `&mut` values cannot be copied into overlapping call loans
+- inner nested-call loan releases before the next outer argument
+- dynamic borrowed index executes once
+- OOB reference formation matches panic identity/code 108
+- struct-field and array-element references match interpreter/native execution
+- LLVM uses `ptr`, stack/GEP addresses, `load`, and `store`
+- LLVM contains no reference `inttoptr`, `ptrtoint`, or null construction
+- ownership/symbol/effect documents expose borrow facts
 
-## Retained aggregate proofs
+## Conservative boundary
 
-- structs/fixed arrays across lexer → parser → AST → formatter → semantics →
-  HIR/CFG → interpreter → LLVM → Clang
-- nested aggregates and by-value parameters/returns
-- deterministic layout JSON
-- Axiom layout == C layout == LLVM GEP layout on x86_64 Linux
-- simple C ABI struct-by-value round trip
+Borrow conflicts are tracked at whole-local-root granularity. Disjoint fields
+of one struct are not simultaneously borrowable when either borrow conflicts at
+the root. This is conservative and safe, not a field-sensitive lifetime proof.
 
 ## Not proven
 
-- references, borrowing, or owned-resource semantics
-- slices or pointer syntax
-- heap allocation
-- packed layouts or broad cross-platform ABI stability
+- raw pointers, null pointers, pointer arithmetic, or `unsafe`
+- reborrowing or non-lexical lifetimes
+- lifetime parameters or reference returns
+- reference fields/arrays
+- slices or heap allocation
+- owned-resource destruction semantics
+- broad cross-platform ABI stability
 - complete effect/capability system
-- Rust bootstrap parity
-- WebAssembly runtime execution
-- bare-metal execution in emulator/hardware
-- GPU execution
-- LSP, package ecosystem, self-hosting, or Axiom 1.0
+- Rust bootstrap parity, self-hosting, GPU execution, or AXIOM 1.0
 
 ## Evidence reproducibility
 
@@ -54,9 +51,9 @@ Two complete runs in the original checkout and one cache-free run from a
 different absolute root produced the same byte-for-byte Evidence ZIP:
 
 ```text
-a9c52dd90db9ff2b7b2c23bcd4d75683cf07a84a39e184c49807c8c5c716a4db
+2d22975825266171713bedf77150b27df59015d338204a4d5908ae7a7c4a939e
 ```
 
 The runner normalizes only volatile unittest wall-clock duration and fixes ZIP
-metadata. Compiler artifacts, diagnostics, native results, layouts, generated
-matrices, and reviewer reports remain inside the archive.
+metadata. Compiler artifacts, diagnostics, native results, generated matrices,
+and reviewer reports remain inside the archive.

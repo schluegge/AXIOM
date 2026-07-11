@@ -1,0 +1,13 @@
+profile system;
+
+fn set(value: &mut i32) -> i32 {
+    *value = 32;
+    return *value;
+}
+
+fn main() -> i32 {
+    var values: [i32; 3] = [5, 6, 7];
+    var index: i32 = 1;
+    set(&mut values[index]);
+    return values[0] + values[1] + values[2];
+}

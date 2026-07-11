@@ -15,6 +15,8 @@ class LLVMExpressionMixin:
             return self.emit_scalar_expr(expression, environment, context)
         if expression.kind in {"StructLiteral", "ArrayLiteral", "FieldExpr", "IndexExpr"}:
             return self.emit_aggregate_expr(expression, environment, context)
+        if expression.kind in {"BorrowExpr", "DerefExpr"}:
+            return self.emit_reference_expr(expression, environment, context)
         if expression.kind == "BinaryExpr":
             return self.emit_binary_expr(expression, environment, context)
         raise ValueError(f"unsupported LLVM expression: {expression.kind}")

@@ -1,0 +1,11 @@
+profile system;
+
+fn combine(target: &mut i32, after: i32) -> i32 {
+    return *target + after;
+}
+
+fn main() -> i32 {
+    var value: i32 = 21;
+    let reference: &mut i32 = &mut value;
+    return combine(reference, *reference);
+}

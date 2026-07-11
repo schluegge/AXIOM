@@ -1,0 +1,5 @@
+profile system;
+fn main() -> i32 {
+    var value: i32 = 1;
+    return *value;
+}
