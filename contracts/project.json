@@ -136,7 +136,7 @@
       ],
       "proof_ids": ["repo-proof.aggregates", "repo-proof.layout", "agent-b.aggregates"],
       "benchmark_ids": [],
-      "diagnostic_owners": ["AX-ARRAY-*", "AX-INDEX-*", "AX-STRUCT-*"],
+      "diagnostic_owners": ["AX-ARRAY-*", "AX-INDEX-*", "AX-LAYOUT-*", "AX-STRUCT-*"],
       "proven_targets": ["x86_64-unknown-linux-gnu"]
     },
     {
