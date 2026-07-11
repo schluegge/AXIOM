@@ -173,6 +173,36 @@
       "benchmark_ids": [],
       "diagnostic_owners": ["AX-BORROW-*", "AX-REF-*"],
       "proven_targets": ["x86_64-unknown-linux-gnu"]
+    },
+    {
+      "id": "benchmark.contract-0.1",
+      "status": "implemented",
+      "introduced_version": "0.7.0",
+      "summary": "Provider-neutral AXIOM-Bench 0.1 methodology, preregistration, strict schemas, offline validator, sandbox law, and adversarial contract checks.",
+      "normative_spec": "AXIOM_BENCH_SPEC.md",
+      "implementation_paths": [
+        "AXIOM_BENCH_PREREGISTRATION.md",
+        "M1_BENCHMARK_SOURCE_EVIDENCE.md",
+        "benchmarks/contracts/0.1.0/contract.json",
+        "benchmarks/schemas/0.1.0/contract.schema.json",
+        "benchmarks/schemas/0.1.0/suite.schema.json",
+        "benchmarks/schemas/0.1.0/task.schema.json",
+        "benchmarks/schemas/0.1.0/language-pack.schema.json",
+        "benchmarks/schemas/0.1.0/toolchains.schema.json",
+        "benchmarks/schemas/0.1.0/attempt.schema.json",
+        "benchmarks/schemas/0.1.0/run.schema.json",
+        "benchmarks/schemas/0.1.0/trace-event.schema.json",
+        "axiom_bench/contract.py",
+        "tools/check_benchmark_contract.py"
+      ],
+      "test_paths": [
+        "tests/test_benchmark_contract.py",
+        "agents/agent_b_benchmark_contract_checks.py"
+      ],
+      "proof_ids": ["repo-proof.benchmark-contract", "agent-b.benchmark-contract"],
+      "benchmark_ids": ["axiom-bench-contract-0.1.0"],
+      "diagnostic_owners": [],
+      "proven_targets": []
     }
   ],
   "deferred_features": [
