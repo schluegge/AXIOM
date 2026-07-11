@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/benchmarks/schemas/0.1.0/conformance-report.schema.json",
+  "title": "AXIOM-Bench 0.1 conformance report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "schema_version",
+    "task_id",
+    "task_sha256",
+    "language",
+    "adapter",
+    "trust_class",
+    "expected_outcome",
+    "actual_full_success",
+    "actual_failure_reason",
+    "conformance_passed",
+    "attempt_path",
+    "attempt_sha256",
+    "canonical_trace_path",
+    "canonical_trace_sha256",
+    "canonical_bundle_sha256",
+    "findings"
+  ],
+  "properties": {
+    "document_kind": {"const": "axiom.bench.conformance-report"},
+    "schema_version": {"const": "0.1.0"},
+    "task_id": {"type": "string", "minLength": 1},
+    "task_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "language": {"enum": ["axiom", "rust", "zig", "go"]},
+    "adapter": {"enum": ["reference", "seeded_wrong"]},
+    "trust_class": {"enum": ["trusted_reference", "trusted_seeded_wrong"]},
+    "expected_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full_success", "failure_reason"],
+      "properties": {
+        "full_success": {"type": "boolean"},
+        "failure_reason": {"type": ["string", "null"]}
+      }
+    },
+    "actual_full_success": {"type": "boolean"},
+    "actual_failure_reason": {"type": ["string", "null"]},
+    "conformance_passed": {"type": "boolean"},
+    "attempt_path": {"type": "string", "minLength": 1},
+    "attempt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "canonical_trace_path": {"type": "string", "minLength": 1},
+    "canonical_trace_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "canonical_bundle_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "path", "message"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "path": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
