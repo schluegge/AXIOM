@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/contracts/project.schema.json",
+  "title": "AXIOM project contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "schema_version",
+    "project",
+    "language",
+    "authorities",
+    "proven_targets",
+    "features",
+    "deferred_features",
+    "claim_documents"
+  ],
+  "properties": {
+    "document_kind": {"const": "axiom.project-contract"},
+    "schema_version": {"const": "1.0.0"},
+    "project": {"$ref": "#/$defs/project"},
+    "language": {"$ref": "#/$defs/language"},
+    "authorities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/authority"}
+    },
+    "proven_targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/target"}
+    },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/feature"}
+    },
+    "deferred_features": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/deferredFeature"}
+    },
+    "claim_documents": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/claimDocument"}
+    }
+  },
+  "$defs": {
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\\\/].*"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "repository", "program_issue", "active_milestone", "roadmap_contract"],
+      "properties": {
+        "name": {"const": "AXIOM"},
+        "repository": {"const": "schluegge/AXIOM"},
+        "program_issue": {"const": 9},
+        "active_milestone": {"const": "M0"},
+        "roadmap_contract": {"const": "roadmap/v1.json"}
+      }
+    },
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "status", "semantic_authority", "profiles"],
+      "properties": {
+        "version": {"const": "0.7.0"},
+        "status": {"const": "semantic-oracle"},
+        "semantic_authority": {"const": "python-llvm-oracle"},
+        "profiles": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"enum": ["system", "script"]}
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "role", "path"],
+      "properties": {
+        "rank": {"type": "integer", "minimum": 1},
+        "role": {
+          "enum": [
+            "normative-semantics",
+            "machine-readable-index",
+            "roadmap",
+            "release-contract",
+            "historical-rationale",
+            "summary"
+          ]
+        },
+        "path": {"$ref": "#/$defs/repositoryPath"}
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["triple", "scope", "evidence_paths"],
+      "properties": {
+        "triple": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "evidence_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/repositoryPath"}
+        }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "introduced_version",
+        "summary",
+        "normative_spec",
+        "implementation_paths",
+        "test_paths",
+        "proof_ids",
+        "benchmark_ids",
+        "diagnostic_owners",
+        "proven_targets"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"},
+        "status": {"enum": ["proposed", "implemented", "proven", "deferred"]},
+        "introduced_version": {"$ref": "#/$defs/version"},
+        "summary": {"type": "string", "minLength": 1},
+        "normative_spec": {"$ref": "#/$defs/repositoryPath"},
+        "implementation_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/repositoryPath"}
+        },
+        "test_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/repositoryPath"}
+        },
+        "proof_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "benchmark_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "diagnostic_owners": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^AX-[A-Z]+-(?:[0-9]{4}|\\*)$"
+          }
+        },
+        "proven_targets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "deferredFeature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "reason", "target_milestone"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"},
+        "reason": {"type": "string", "minLength": 1},
+        "target_milestone": {"type": "string", "minLength": 1}
+      }
+    },
+    "claimDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "start_marker", "end_marker", "feature_ids"],
+      "properties": {
+        "path": {"$ref": "#/$defs/repositoryPath"},
+        "start_marker": {"type": "string", "minLength": 1},
+        "end_marker": {"type": "string", "minLength": 1},
+        "feature_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
