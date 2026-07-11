@@ -16,6 +16,7 @@ The canonical path to AXIOM v1.0 is defined by:
 - `AI_FIRST_MVP_CONTRACT.md`
 - `V1_TRACKING.md`
 - machine-readable graph `roadmap/v1.json`
+- machine-readable current-state index `contracts/project.json`
 - GitHub program issue #9
 - GitHub release gate #25
 
@@ -43,21 +44,22 @@ UTF-8 source
 
 ## Current implemented language subset
 
-- `i32` and `bool`
-- functions, recursion, `let`, `var`, lexical scopes
-- `if` and `while`
-- checked signed `i32` arithmetic
-- structs and fixed-size arrays
-- nested aggregate values and structured mutation
-- checked dynamic indices for reads, writes, and borrows
-- non-null scoped shared references `&T`
-- non-null scoped mutable references `&mut T`
-- borrow expressions, dereference reads, and dereference writes
-- conservative lexical whole-root borrow checking
-- reference parameters and immutable local reference bindings
-- deterministic x86_64 Linux layout inspection
-- simple C-compatible struct-by-value interoperability
-- `system` and `script` profile parsing
+The following feature IDs are checked against `contracts/project.json`. Text
+outside this block may explain the features but may not add an implementation
+claim that is absent from the contract.
+
+<!-- AXIOM-PROJECT-CONTRACT:FEATURES:BEGIN -->
+- `core.vertical-pipeline` — UTF-8 source, functions, lexical scopes, canonical formatting, semantic documents, interpreter, LLVM, Clang, and differential execution.
+- `language.mutable-control-flow` — explicit `let`/`var`, nested mutation, `if`, and `while`.
+- `arithmetic.checked-i32` — checked signed `i32` arithmetic and stable runtime fault identities.
+- `data.aggregates-fixed-arrays` — structs, fixed arrays, checked indexing, deterministic x86_64 Linux layout, and simple struct-by-value C ABI proof.
+- `mutation.structured-lvalues` — whole-value, field, array-element, and nested structured assignment.
+- `memory.scoped-references` — non-null scoped `&T` and `&mut T` with conservative lexical whole-root borrow checking.
+<!-- AXIOM-PROJECT-CONTRACT:FEATURES:END -->
+
+The current primitive source types are `i32` and `bool`. The accepted profiles
+are `system` and `script`. Reference parameters and immutable local reference
+bindings are supported within the restrictions in `REFERENCE_SEMANTICS.md`.
 
 Example:
 
@@ -79,14 +81,18 @@ Requirements:
 
 - Python 3.11+
 - Clang with textual LLVM IR support
+- dependencies pinned in `requirements-proof.txt`
 
 ```bash
+python3 -m pip install -r requirements-proof.txt
+python3 tools/check_project_contract.py
 python3 run_repo_proof.py
 ```
 
-The runner executes the full suite, separate Agent B process, native
-differential corpus, invalid diagnostics, generated matrices, layout/ABI
-checks, and reproducibility-sensitive Evidence generation. It creates:
+The runner executes the full suite, project-contract gate, separate Agent B
+process, native differential corpus, invalid diagnostics, generated matrices,
+layout/ABI checks, and reproducibility-sensitive Evidence generation. It
+creates:
 
 ```text
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
@@ -124,18 +130,22 @@ post-v1 because they do not unlock the first product domain.
 
 ## Governing semantics and process
 
-- `MVP_ROADMAP.md`
-- `AI_FIRST_MVP_CONTRACT.md`
-- `V1_TRACKING.md`
-- `ROADMAP_AMENDMENT_007.md`
+- `CORE_SEMANTICS.md`
 - `ARITHMETIC_SEMANTICS.md`
 - `AGGREGATE_SEMANTICS.md`
 - `MUTATION_SEMANTICS.md`
 - `REFERENCE_SEMANTICS.md`
+- `contracts/project.json`
+- `contracts/project.schema.json`
+- `MVP_ROADMAP.md`
+- `AI_FIRST_MVP_CONTRACT.md`
+- `V1_TRACKING.md`
+- `ROADMAP_AMENDMENT_007.md`
 - `AGENTS.md`
 - `PROOF_STATUS.md`
 - `CONTEXT7_SOURCE_EVIDENCE.md`
 - `CONTEXT7_MVP_DESIGN_EVIDENCE.md`
+- `M0_CONTRACT_SOURCE_EVIDENCE.md`
 
 ## Current proof boundary
 
