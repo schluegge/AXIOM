@@ -16,6 +16,7 @@
     "claim_documents"
   ],
   "properties": {
+    "$schema": {"const": "./project.schema.json"},
     "document_kind": {"const": "axiom.project-contract"},
     "schema_version": {"const": "1.0.0"},
     "project": {"$ref": "#/$defs/project"},
