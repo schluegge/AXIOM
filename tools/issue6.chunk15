@@ -1,0 +1,221 @@
+index 0000000000000000000000000000000000000000..48903f5f7107716021e8a7657018b183e69194e5
+--- /dev/null
++++ b/examples/ref_mut_call.ax
+@@ -0,0 +1,11 @@
++profile system;
++
++fn increment(value: &mut i32) -> i32 {
++    *value = *value + 1;
++    return *value;
++}
++
++fn main() -> i32 {
++    var value: i32 = 41;
++    return increment(&mut value);
++}
+diff --git a/examples/ref_nested_call_release.ax b/examples/ref_nested_call_release.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..3a01846b6bd24f096a4bf8c701e1b981eb7b401f
+--- /dev/null
++++ b/examples/ref_nested_call_release.ax
+@@ -0,0 +1,16 @@
++profile system;
++
++fn bump(value: &mut i32) -> i32 {
++    *value = *value + 1;
++    return *value;
++}
++
++fn combine(before: i32, target: &mut i32) -> i32 {
++    *target = *target + before;
++    return *target;
++}
++
++fn main() -> i32 {
++    var value: i32 = 20;
++    return combine(bump(&mut value), &mut value);
++}
+diff --git a/examples/ref_oob.ax b/examples/ref_oob.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..b9ade1a7f7ee18d9302801028b0fbedcb26c35aa
+--- /dev/null
++++ b/examples/ref_oob.ax
+@@ -0,0 +1,11 @@
++profile system;
++
++fn read(value: &i32) -> i32 {
++    return *value;
++}
++
++fn main() -> i32 {
++    var values: [i32; 2] = [10, 20];
++    var index: i32 = 2;
++    return read(&values[index]);
++}
+diff --git a/examples/ref_scope_release.ax b/examples/ref_scope_release.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..039edc30b464a6350d66487720a4690ed97d9123
+--- /dev/null
++++ b/examples/ref_scope_release.ax
+@@ -0,0 +1,11 @@
++profile system;
++
++fn main() -> i32 {
++    var value: i32 = 40;
++    if true {
++        let reference: &mut i32 = &mut value;
++        *reference = 41;
++    }
++    value = value + 1;
++    return value;
++}
+diff --git a/examples/ref_shared_alias.ax b/examples/ref_shared_alias.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..0e5396f99dbd35a89e0b5debd6104210253f982f
+--- /dev/null
++++ b/examples/ref_shared_alias.ax
+@@ -0,0 +1,10 @@
++profile system;
++
++fn add(left: &i32, right: &i32) -> i32 {
++    return *left + *right;
++}
++
++fn main() -> i32 {
++    var value: i32 = 21;
++    return add(&value, &value);
++}
+diff --git a/examples/ref_shared_call.ax b/examples/ref_shared_call.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..599d3d7da7a2203e335a242379a0ebfdbe958d0c
+--- /dev/null
++++ b/examples/ref_shared_call.ax
+@@ -0,0 +1,10 @@
++profile system;
++
++fn read(value: &i32) -> i32 {
++    return *value;
++}
++
++fn main() -> i32 {
++    var value: i32 = 42;
++    return read(&value);
++}
+diff --git a/examples/ref_shared_local_alias.ax b/examples/ref_shared_local_alias.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..7235454bfbb94163d7ee2feed543546f9bda4772
+--- /dev/null
++++ b/examples/ref_shared_local_alias.ax
+@@ -0,0 +1,8 @@
++profile system;
++
++fn main() -> i32 {
++    var value: i32 = 21;
++    let first: &i32 = &value;
++    let second: &i32 = &value;
++    return value + *first + *second - 21;
++}
+diff --git a/examples/ref_shared_then_mut_scope.ax b/examples/ref_shared_then_mut_scope.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..906da6556917b924b92031fc97fe382276ef1390
+--- /dev/null
++++ b/examples/ref_shared_then_mut_scope.ax
+@@ -0,0 +1,17 @@
++profile system;
++
++fn increment(value: &mut i32) -> i32 {
++    *value = *value + 1;
++    return *value;
++}
++
++fn main() -> i32 {
++    var value: i32 = 41;
++    if true {
++        let shared: &i32 = &value;
++        if *shared != 41 {
++            return 0;
++        }
++    }
++    return increment(&mut value);
++}
+diff --git a/run_repo_proof.py b/run_repo_proof.py
+index db0e7163d26c6f664ebbcbd10ad7fc430c5f0e2c..f9fd89f1c3d0d61034a33c48953254040d784020 100644
+--- a/run_repo_proof.py
++++ b/run_repo_proof.py
+@@ -111,6 +111,20 @@ def main() -> int:
+         "lvalue-index-once": ("lvalue_index_once.ax", 42, None),
+         "lvalue-oob-write": ("lvalue_oob_write.ax", 108, "array_index_out_of_bounds"),
+         "lvalue-rhs-first": ("lvalue_rhs_first.ax", 104, "i32_divide_by_zero"),
++        "ref-shared-call": ("ref_shared_call.ax", 42, None),
++        "ref-mut-call": ("ref_mut_call.ax", 42, None),
++        "ref-shared-alias": ("ref_shared_alias.ax", 42, None),
++        "ref-field-mut": ("ref_field_mut.ax", 42, None),
++        "ref-array-mut": ("ref_array_mut.ax", 44, None),
++        "ref-local-shared": ("ref_local_shared.ax", 42, None),
++        "ref-scope-release": ("ref_scope_release.ax", 42, None),
++        "ref-argument-order": ("ref_argument_order.ax", 42, None),
++        "ref-dynamic-once": ("ref_dynamic_once.ax", 42, None),
++        "ref-forward": ("ref_forward.ax", 42, None),
++        "ref-shared-local-alias": ("ref_shared_local_alias.ax", 42, None),
++        "ref-shared-then-mut-scope": ("ref_shared_then_mut_scope.ax", 42, None),
++        "ref-nested-call-release": ("ref_nested_call_release.ax", 42, None),
++        "ref-oob": ("ref_oob.ax", 108, "array_index_out_of_bounds"),
+     }
+     results: dict[str, object] = {}
+     for name, (fixture, expected_exit, expected_panic) in cases.items():
+@@ -157,6 +171,25 @@ def main() -> int:
+         "invalid_lvalue_parameter.ax": "AX-MUT-0001",
+         "invalid_lvalue_temporary_field.ax": "AX-MUT-0002",
+         "invalid_lvalue_binary.ax": "AX-MUT-0002",
++        "invalid_ref_mut_immutable.ax": "AX-BORROW-0001",
++        "invalid_ref_shared_during_mut.ax": "AX-BORROW-0002",
++        "invalid_ref_mut_conflict.ax": "AX-BORROW-0003",
++        "invalid_ref_read_during_mut.ax": "AX-BORROW-0004",
++        "invalid_ref_write_during_shared.ax": "AX-BORROW-0005",
++        "invalid_ref_shared_write.ax": "AX-BORROW-0006",
++        "invalid_ref_reborrow.ax": "AX-BORROW-0007",
++        "invalid_ref_duplicate_mut_value.ax": "AX-BORROW-0008",
++        "invalid_ref_use_after_loan_in_args.ax": "AX-BORROW-0009",
++        "invalid_ref_nested_call_loan.ax": "AX-BORROW-0009",
++        "invalid_ref_return.ax": "AX-REF-0001",
++        "invalid_ref_field.ax": "AX-REF-0002",
++        "invalid_ref_array.ax": "AX-REF-0002",
++        "invalid_ref_var_binding.ax": "AX-REF-0004",
++        "invalid_ref_nonborrow_initializer.ax": "AX-REF-0005",
++        "invalid_ref_deref_scalar.ax": "AX-REF-0006",
++        "invalid_ref_temporary.ax": "AX-MUT-0002",
++        "invalid_ref_two_mut_args.ax": "AX-BORROW-0003",
++        "invalid_ref_argument_order.ax": "AX-BORROW-0004",
+     }
+     invalid_documents: dict[str, list[str]] = {}
+     for fixture, expected_code in invalid_expected.items():
+@@ -177,7 +210,7 @@ def main() -> int:
+ 
+     manifest = {
+         "document_kind": "axiom.repo-proof",
+-        "schema_version": "0.6.0",
++        "schema_version": "0.7.0",
+         "status": "passed",
+         "unit_test_exit_code": tests.returncode,
+         "unit_tests": test_count,
+@@ -198,8 +231,10 @@ def main() -> int:
+         "layout": layout_document,
+         "panic_code_map": {str(code): name for code, name in sorted(PANIC_NAMES.items())},
+         "known_unproven": [
+-            "references, borrowing, and owned-resource semantics",
+-            "slices and pointer syntax",
++            "raw pointers, null pointers, pointer arithmetic, and unsafe blocks",
++            "reference returns, reference fields, arrays of references, and reborrowing",
++            "lifetime parameters, non-lexical lifetimes, and partial-field borrowing",
++            "slices, heap allocation, and owned-resource destruction semantics",
+             "broad cross-platform ABI stability",
+             "complete effects and capability system",
+             "Rust bootstrap parity",
+@@ -221,7 +256,7 @@ def main() -> int:
+     print(
+         canonical_json({
+             "status": "passed",
+-            "schema_version": "0.6.0",
++            "schema_version": "0.7.0",
+             "evidence_zip": ZIP.as_posix(),
+             "unit_tests": test_count,
