@@ -7,9 +7,9 @@ from typing import Any
 from .checker import check_project_contract as _check_project_contract
 
 
-def _pinned_dependency_names(root: Path) -> list[str]:
+def _pinned_dependencies(root: Path) -> dict[str, str]:
     path = root / "requirements-proof.txt"
-    names: list[str] = []
+    dependencies: dict[str, str] = {}
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#"):
@@ -19,13 +19,15 @@ def _pinned_dependency_names(root: Path) -> list[str]:
         name, pinned_version = line.split("==", 1)
         if not name or not pinned_version:
             raise ValueError(f"invalid proof dependency pin: {line}")
-        names.append(name)
-    return sorted(names)
+        if name in dependencies:
+            raise ValueError(f"duplicate proof dependency pin: {name}")
+        dependencies[name] = pinned_version
+    return dict(sorted(dependencies.items()))
 
 
-def _installed_dependency_versions(root: Path) -> dict[str, str]:
+def _installed_dependency_versions(pins: dict[str, str]) -> dict[str, str]:
     versions: dict[str, str] = {}
-    for name in _pinned_dependency_names(root):
+    for name in pins:
         try:
             versions[name] = package_version(name)
         except PackageNotFoundError:
@@ -40,17 +42,37 @@ def check_project_contract(
 ) -> dict[str, Any]:
     resolved_root = root.resolve()
     result = _check_project_contract(resolved_root, contract_path, schema_path)
-    result["dependencies"] = _installed_dependency_versions(resolved_root)
-    missing = sorted(name for name, value in result["dependencies"].items() if value == "not-installed")
-    if missing and result["status"] == "passed":
+    pins = _pinned_dependencies(resolved_root)
+    installed = _installed_dependency_versions(pins)
+    result["dependency_pins"] = pins
+    result["dependencies"] = installed
+
+    dependency_findings: list[dict[str, str]] = []
+    for name, expected in pins.items():
+        actual = installed[name]
+        if actual == "not-installed":
+            dependency_findings.append(
+                {
+                    "code": "AX-CONTRACT-0006",
+                    "path": f"requirements-proof.txt:{name}",
+                    "message": f"pinned proof dependency is not installed: {name}=={expected}",
+                }
+            )
+        elif actual != expected:
+            dependency_findings.append(
+                {
+                    "code": "AX-CONTRACT-0007",
+                    "path": f"requirements-proof.txt:{name}",
+                    "message": f"proof dependency version mismatch: expected {name}=={expected}, installed {actual}",
+                }
+            )
+
+    if dependency_findings:
         result["status"] = "failed"
         result["exit_code"] = 2
-        result["findings"] = [
-            {
-                "code": "AX-CONTRACT-0006",
-                "path": "requirements-proof.txt",
-                "message": f"pinned proof dependencies are not installed: {', '.join(missing)}",
-            }
-        ]
-        result["counts"]["findings"] = 1
+        result["findings"] = sorted(
+            [*result["findings"], *dependency_findings],
+            key=lambda item: (item["code"], item["path"], item["message"]),
+        )
+        result["counts"]["findings"] = len(result["findings"])
     return result
