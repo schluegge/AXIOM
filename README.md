@@ -45,8 +45,8 @@ UTF-8 source
 ## Current implemented language subset
 
 The following feature IDs are checked against `contracts/project.json`. Text
-outside this block may explain the features but may not add an implementation
-claim that is absent from the contract.
+outside this block may explain the features but may not add a language
+implementation claim that is absent from the contract.
 
 <!-- AXIOM-PROJECT-CONTRACT:FEATURES:BEGIN -->
 - `core.vertical-pipeline` — UTF-8 source, functions, lexical scopes, canonical formatting, semantic documents, interpreter, LLVM, Clang, and differential execution.
@@ -86,25 +86,55 @@ Requirements:
 ```bash
 python3 -m pip install -r requirements-proof.txt
 python3 tools/check_project_contract.py
+python3 tools/check_benchmark_contract.py
 python3 run_repo_proof.py
 ```
 
-The runner executes the full suite, project-contract gate, separate Agent B
-process, native differential corpus, invalid diagnostics, generated matrices,
-layout/ABI checks, and reproducibility-sensitive Evidence generation. It
-creates:
+The runner executes the project-contract gate, proposed AXIOM-Bench contract
+gate, complete unit/integration suite, separate Agent B process, native
+differential corpus, invalid diagnostics, generated matrices, layout/ABI checks,
+and reproducibility-sensitive Evidence generation. It creates:
 
 ```text
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
+
+## Current M1 benchmark state
+
+The provider-neutral AXIOM-Bench `0.1.x` methodology and preregistration are
+implemented and release-blocking through:
+
+- `AXIOM_BENCH_SPEC.md`
+- `AXIOM_BENCH_PREREGISTRATION.md`
+- `M1_BENCHMARK_SOURCE_EVIDENCE.md`
+- `benchmarks/contracts/0.1.0/contract.json`
+- eight strict Draft 2020-12 schemas
+- `tools/check_benchmark_contract.py`
+- adversarial unit and Agent B checks
+
+The benchmark suite itself is **not frozen or complete**. No runner, language
+packs, task corpus, toolchain matrix, reference conformance bundle, seeded-wrong
+bundle, replay bundle, or live-model result is claimed yet.
+
+The contract already enforces:
+
+- exactly three model iterations;
+- separate language-only, compiler-assisted, and full-agent lanes;
+- AXIOM, Rust, Zig, and Go variants;
+- public/base checks separate from acceptance checks;
+- immutable raw completion evidence;
+- no remote task dependency;
+- controlled-holdout provenance rules;
+- no local execution of untrusted model output;
+- no AI-first superiority claim from the M1 seed.
 
 ## Ordered path to v1.0
 
 The current v0.7 semantics are frozen while the v1 foundation is established.
 Every milestone has a dedicated GitHub issue and a mechanical exit gate:
 
-1. M0 / #11 — project authority and v0.7 consistency;
-2. M1 / #12 — contamination-aware AXIOM-Bench seed;
+1. M0 / #11 — project authority and v0.7 consistency, complete;
+2. M1 / #12 — contamination-aware AXIOM-Bench seed, active;
 3. M2 / #13 — independent Rust bootstrap parity for v0.7;
 4. M3 / #14 — stable compiler and agent interaction protocol;
 5. M4 / #15 — scalar and explicit-conversion foundation;
@@ -139,6 +169,8 @@ post-v1 because they do not unlock the first product domain.
 - `contracts/project.schema.json`
 - `MVP_ROADMAP.md`
 - `AI_FIRST_MVP_CONTRACT.md`
+- `AXIOM_BENCH_SPEC.md`
+- `AXIOM_BENCH_PREREGISTRATION.md`
 - `V1_TRACKING.md`
 - `ROADMAP_AMENDMENT_007.md`
 - `AGENTS.md`
@@ -146,11 +178,15 @@ post-v1 because they do not unlock the first product domain.
 - `CONTEXT7_SOURCE_EVIDENCE.md`
 - `CONTEXT7_MVP_DESIGN_EVIDENCE.md`
 - `M0_CONTRACT_SOURCE_EVIDENCE.md`
+- `M1_BENCHMARK_SOURCE_EVIDENCE.md`
 
 ## Current proof boundary
 
-This is an executable semantics oracle, not AXIOM v1.0. It does not yet prove:
+This is an executable semantics oracle with an implemented benchmark contract,
+not a frozen AXIOM-Bench suite and not AXIOM v1.0. It does not yet prove:
 
+- the AXIOM-Bench runner, language packs, task corpus, toolchain parity,
+  conformance bundles, replay, live-model execution, or M1 completion;
 - the Rust bootstrap compiler;
 - algebraic variants, `Option`, or `Result`;
 - broad scalar and conversion semantics;

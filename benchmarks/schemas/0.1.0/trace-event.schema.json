@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/benchmarks/schemas/0.1.0/trace-event.schema.json",
+  "title": "AXIOM-Bench 0.1 trace event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "schema_version",
+    "sequence",
+    "event_kind",
+    "run_id",
+    "task_id",
+    "language",
+    "attempt_number",
+    "timestamp",
+    "payload",
+    "payload_path",
+    "payload_sha256"
+  ],
+  "properties": {
+    "document_kind": {"const": "axiom.bench.trace-event"},
+    "schema_version": {"const": "0.1.0"},
+    "sequence": {"type": "integer", "minimum": 0},
+    "event_kind": {
+      "enum": [
+        "run_start",
+        "run_finish",
+        "task_start",
+        "task_finish",
+        "attempt_start",
+        "attempt_finish",
+        "context_assembled",
+        "model_request",
+        "model_response",
+        "raw_completion_stored",
+        "extraction_result",
+        "file_snapshot",
+        "file_mutation",
+        "command_start",
+        "command_finish",
+        "check_result",
+        "budget_update",
+        "budget_exhausted",
+        "sandbox_blocked",
+        "timeout",
+        "error",
+        "score_decision"
+      ]
+    },
+    "run_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": ["string", "null"]},
+    "language": {"type": ["string", "null"], "enum": [null, "axiom", "rust", "zig", "go"]},
+    "attempt_number": {"type": ["integer", "null"], "minimum": 1, "maximum": 3},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "payload": {"type": "object", "additionalProperties": true},
+    "payload_path": {"type": ["string", "null"]},
+    "payload_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+  }
+}

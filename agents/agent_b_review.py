@@ -15,6 +15,7 @@ from agents.agent_b_aggregate_semantic_checks import register as register_aggreg
 from agents.agent_b_aggregate_layout_checks import register as register_aggregate_layout
 from agents.agent_b_aggregate_generated_checks import register as register_aggregate_generated
 from agents.agent_b_arithmetic_checks import register as register_arithmetic
+from agents.agent_b_benchmark_contract_checks import register as register_benchmark_contract
 from agents.agent_b_contract_checks import register as register_contract
 from agents.agent_b_core_checks import register as register_core
 from agents.agent_b_lvalue_checks import register as register_lvalues
@@ -33,6 +34,7 @@ def main() -> int:
     support.configure(root, output)
     try:
         register_contract()
+        register_benchmark_contract()
         register_aggregate_semantics()
         register_aggregate_layout()
         register_aggregate_generated()
