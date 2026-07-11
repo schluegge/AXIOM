@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/benchmarks/schemas/0.1.0/toolchains.schema.json",
+  "title": "AXIOM-Bench 0.1 toolchains",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["document_kind", "schema_version", "status", "recorded_at", "platform", "toolchains"],
+  "properties": {
+    "document_kind": {"const": "axiom.bench.toolchains"},
+    "schema_version": {"const": "0.1.0"},
+    "status": {"enum": ["draft", "frozen"]},
+    "recorded_at": {"type": "string", "format": "date-time"},
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "architecture"],
+      "properties": {
+        "os": {"type": "string", "minLength": 1},
+        "architecture": {"type": "string", "minLength": 1}
+      }
+    },
+    "toolchains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axiom", "rust", "zig", "go"],
+      "properties": {
+        "axiom": {"$ref": "#/$defs/toolchain"},
+        "rust": {"$ref": "#/$defs/toolchain"},
+        "zig": {"$ref": "#/$defs/toolchain"},
+        "go": {"$ref": "#/$defs/toolchain"}
+      }
+    }
+  },
+  "$defs": {
+    "command": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "identity_status",
+        "version_command",
+        "version_output",
+        "installation_source",
+        "installation_artifact_sha256",
+        "dependency_network_policy",
+        "notes"
+      ],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": ["string", "null"]},
+        "identity_status": {"enum": ["pending", "frozen", "unavailable"]},
+        "version_command": {"$ref": "#/$defs/command"},
+        "version_output": {"type": ["string", "null"]},
+        "installation_source": {"type": ["string", "null"]},
+        "installation_artifact_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "dependency_network_policy": {"enum": ["none", "toolchain_install_only", "declared_local_only"]},
+        "notes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  }
+}
