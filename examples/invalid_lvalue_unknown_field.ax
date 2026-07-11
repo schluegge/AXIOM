@@ -1,0 +1,12 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+fn main() -> i32 {
+    var pair: Pair = Pair { left: 1, right: 2 };
+    pair.missing = 3;
+    return pair.left;
+}

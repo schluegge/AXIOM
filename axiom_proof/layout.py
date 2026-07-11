@@ -112,7 +112,7 @@ class LayoutEngine:
     def document(self, type_name: str) -> dict[str, Any]:
         return {
             "document_kind": "axiom.layout",
-            "schema_version": "0.5.0",
+            "schema_version": "0.6.0",
             "target": self.target,
             "representation": "axiom_natural_c_compatible_subset_v0",
             "layout": self.layout(type_name).to_dict(),

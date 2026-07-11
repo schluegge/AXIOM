@@ -75,7 +75,21 @@ class LLVMSupportMixin:
     def collect_dynamic_indexes(self, block: Node) -> list[Node]:
         expressions: list[Node] = []
 
+        def inspect_lvalue(target: Node) -> None:
+            if target.kind == "NameExpr":
+                return
+            if target.kind == "FieldExpr":
+                inspect_lvalue(target.fields["base"])
+                return
+            if target.kind == "IndexExpr":
+                inspect_lvalue(target.fields["base"])
+                expressions.extend(self.walk_expr(target.fields["index"]))
+
         def inspect_statement(statement: Node) -> None:
+            if statement.kind == "AssignmentStmt":
+                inspect_lvalue(statement.fields["target"])
+                expressions.extend(self.walk_expr(statement.fields["value"]))
+                return
             for value in statement.fields.values():
                 if isinstance(value, Node):
                     if value.kind == "Block":
@@ -96,4 +110,3 @@ class LLVMSupportMixin:
             if expression.kind == "IndexExpr"
             and expression.fields["index"].kind != "IntegerLiteral"
         ]
-

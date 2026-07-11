@@ -1,44 +1,46 @@
-# Proof Status — v0.5.0
+# Proof Status — v0.6.0
 
 ## Passed in the sandbox
 
-- unit/integration suite: **31/31**
-- Agent B release-blocking review: **33/33**
-- deterministic generated aggregate matrix: **8 valid + 4 OOB**
+- unit/integration suite: **40/40**
+- Agent B release-blocking review: **42/42**
+- interpreter/native differential corpus: **24/24**
+- stable invalid fixture matrix: **33/33**
+- generated l-value matrix: **8 valid + 4 OOB**
 - Python bytecode compilation: passed
-- clean interpreter/native aggregate differential: passed
-- all v0.4.0 checked arithmetic and control-flow regressions: passed
+- all v0.5.0 aggregate/layout/C-ABI regressions: passed
+- all v0.4.0 arithmetic/control-flow regressions: passed
 
-## Aggregate proofs
+## Structured mutation proofs
 
-- structs and arrays survive lexer → parser → AST → formatter → semantic
-  analysis → HIR/CFG → interpreter → LLVM → Clang
-- aggregate parameters, returns, local storage, and whole-value reassignment
-- nested structs and nested arrays
-- dynamic negative and upper-bound checks before LLVM GEP
-- panic identity `array_index_out_of_bounds`, reference code `108`
-- stable diagnostic matrix for declarations, literals, fields, arrays, indices,
-  recursion, empty aggregates, and unsupported equality
-- deterministic layout JSON and aggregate compiler outputs
-- Axiom layout engine == C layout == LLVM GEP layout on x86_64 Linux
-- C calls Axiom aggregate-return and aggregate-parameter functions by value
+- assignment target is a structured AST, HIR, and symbol object
+- whole binding, field, array element, and nested writes
+- immutable root rejection for `let` and parameters
+- non-l-value temporary rejection
+- exact assigned-leaf type checking
+- dynamic write bounds check before LLVM GEP and store
+- panic identity `array_index_out_of_bounds`, code `108`
+- RHS fault precedes l-value bounds fault
+- each dynamic index expression evaluated exactly once
+- copy-by-value aggregates remain independent after subobject mutation
+- LLVM stores directly to the leaf pointer without rewriting the whole aggregate
+- structured write facts appear in symbols, effects, HIR, and ownership output
 
-## Earlier retained proofs
+## Retained aggregate proofs
 
-- strict UTF-8 source loading and SHA-256
-- exact token spans
-- deterministic AST and canonical formatting
-- names, scalar types, effects, HIR, CFG, ownership summary
-- checked signed `i32` arithmetic and panic identities 101–107
-- mutable locals, lexical scopes, assignments, `if`, `while`, recursion
-- native x86_64 Clang build and interpreter/native differential execution
-- script profile
+- structs/fixed arrays across lexer → parser → AST → formatter → semantics →
+  HIR/CFG → interpreter → LLVM → Clang
+- nested aggregates and by-value parameters/returns
+- deterministic layout JSON
+- Axiom layout == C layout == LLVM GEP layout on x86_64 Linux
+- simple C ABI struct-by-value round trip
 
 ## Not proven
 
-- aggregate field or element mutation
-- slices, references, borrowing, or owned-resource semantics
-- explicit/packed layouts or broad cross-platform ABI stability
+- references, borrowing, or owned-resource semantics
+- slices or pointer syntax
+- heap allocation
+- packed layouts or broad cross-platform ABI stability
 - complete effect/capability system
 - Rust bootstrap parity
 - WebAssembly runtime execution
@@ -48,14 +50,13 @@
 
 ## Evidence reproducibility
 
-Two complete runs in the original checkout and a third run from a cache-free
-copy at a different absolute path produced the same byte-for-byte Evidence ZIP:
+Two complete runs in the original checkout and one cache-free run from a
+different absolute root produced the same byte-for-byte Evidence ZIP:
 
 ```text
-5ba6bc52f65188cf2082dbbc7802f332679e0527b2e135c6c8506f58e5ecc659
+a9c52dd90db9ff2b7b2c23bcd4d75683cf07a84a39e184c49807c8c5c716a4db
 ```
 
-The runner normalizes only volatile unittest wall-clock duration and uses
-fixed ZIP metadata. Source and compiler paths used by the proof are repo-relative.
-Semantic output, command results, diagnostics, native hashes, and review reports
-remain part of the archive.
+The runner normalizes only volatile unittest wall-clock duration and fixes ZIP
+metadata. Compiler artifacts, diagnostics, native results, layouts, generated
+matrices, and reviewer reports remain inside the archive.

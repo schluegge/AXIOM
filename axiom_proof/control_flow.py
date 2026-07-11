@@ -147,6 +147,6 @@ class FunctionCFGBuilder:
 def build_control_flow_document(program: Node) -> dict[str, Any]:
     return {
         "document_kind": "axiom.control-flow",
-        "schema_version": "0.5.0",
+        "schema_version": "0.6.0",
         "functions": [FunctionCFGBuilder(function).build() for function in program.fields["functions"]],
     }

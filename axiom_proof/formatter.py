@@ -56,7 +56,7 @@ class Formatter:
                 )
             elif kind == "AssignmentStmt":
                 self.lines.append(
-                    f"{prefix}{statement.fields['target']} = {self.format_expr(statement.fields['value'])};"
+                    f"{prefix}{self.format_expr(statement.fields['target'])} = {self.format_expr(statement.fields['value'])};"
                 )
             elif kind == "ReturnStmt":
                 self.lines.append(f"{prefix}return {self.format_expr(statement.fields['value'])};")

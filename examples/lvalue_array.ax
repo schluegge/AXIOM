@@ -1,0 +1,7 @@
+profile system;
+
+fn main() -> i32 {
+    var values: [i32; 3] = [10, 20, 30];
+    values[1] = 12;
+    return values[0] + values[1] + values[2];
+}

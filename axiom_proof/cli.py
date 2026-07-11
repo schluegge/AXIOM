@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(
                     {
                         "document_kind": "axiom.diagnostics",
-                        "schema_version": "0.5.0",
+                        "schema_version": "0.6.0",
                         "diagnostics": [item.to_dict() for item in compilation["diagnostics"]],
                     },
                     indent=2,
@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(
                     {
                         "document_kind": "axiom.cli-error",
-                        "schema_version": "0.5.0",
+                        "schema_version": "0.6.0",
                         "code": "AX-LAYOUT-0001",
                         "message": f"unknown type: {args.type_name}",
                     },

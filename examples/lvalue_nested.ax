@@ -1,0 +1,12 @@
+profile system;
+
+struct Holder {
+    values: [[i32; 2]; 2],
+}
+
+fn main() -> i32 {
+    var holder: Holder = Holder { values: [[1, 2], [3, 4]] };
+    let row: i32 = 1;
+    holder.values[row][0] = 35;
+    return holder.values[0][0] + holder.values[1][0] + holder.values[1][1];
+}

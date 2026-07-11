@@ -12,7 +12,7 @@ class SemanticDocumentMixin:
     def symbol_document(self) -> dict[str, Any]:
         return {
             "document_kind": "axiom.symbols",
-            "schema_version": "0.5.0",
+            "schema_version": "0.6.0",
             "structs": [
                 {
                     "name": definition.name,
@@ -40,14 +40,14 @@ class SemanticDocumentMixin:
     def type_document(self) -> dict[str, Any]:
         return {
             "document_kind": "axiom.types",
-            "schema_version": "0.5.0",
+            "schema_version": "0.6.0",
             "node_types": dict(sorted(self.node_types.items())),
         }
 
     def effect_document(self) -> dict[str, Any]:
         return {
             "document_kind": "axiom.effects",
-            "schema_version": "0.5.0",
+            "schema_version": "0.6.0",
             "functions": [
                 {
                     "name": name,
@@ -66,15 +66,20 @@ class SemanticDocumentMixin:
     def ownership_document(self) -> dict[str, Any]:
         mutable_bindings = sum(facts["mutable_bindings"] for facts in self.function_facts.values())
         assignments = sum(facts["assignments"] for facts in self.function_facts.values())
+        field_writes = sum(facts["field_writes"] for facts in self.function_facts.values())
+        index_writes = sum(facts["index_writes"] for facts in self.function_facts.values())
         return {
             "document_kind": "axiom.ownership",
-            "schema_version": "0.5.0",
+            "schema_version": "0.6.0",
             "mode": "copy_values_with_explicit_local_mutation",
             "borrows": [],
             "moves": [],
             "mutable_bindings": mutable_bindings,
             "assignments": assignments,
-            "aggregate_semantics": "deep_value_copy_in_reference_interpreter; by-value LLVM aggregates",
+            "field_writes": field_writes,
+            "index_writes": index_writes,
+            "structured_lvalues": True,
+            "aggregate_semantics": "deep value copies with functional interpreter updates and direct LLVM subobject stores",
             "proof": "no_owned_resource_types_exist_in_reference_subset",
         }
 

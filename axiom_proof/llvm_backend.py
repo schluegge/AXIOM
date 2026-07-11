@@ -13,6 +13,7 @@ from .llvm_aggregate_expressions import LLVMAggregateExpressionMixin
 from .llvm_binary_expressions import LLVMBinaryExpressionMixin
 from .llvm_arithmetic import LLVMArithmeticMixin
 from .llvm_statements import LLVMStatementMixin
+from .llvm_lvalues import LLVMLValueMixin
 
 
 class LLVMBackend(
@@ -22,6 +23,7 @@ class LLVMBackend(
     LLVMAggregateExpressionMixin,
     LLVMBinaryExpressionMixin,
     LLVMExpressionMixin,
+    LLVMLValueMixin,
     LLVMStatementMixin,
 ):
     def __init__(

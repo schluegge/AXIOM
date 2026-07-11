@@ -12,9 +12,10 @@ bootstrap compiler.
 2. `PROOF_STATUS.md`
 3. `ARITHMETIC_SEMANTICS.md`
 4. `AGGREGATE_SEMANTICS.md`
-5. `CONTEXT7_SOURCE_EVIDENCE.md`
-6. the relevant roadmap amendment
-7. implementation and tests for the affected stage
+5. `MUTATION_SEMANTICS.md`
+6. `CONTEXT7_SOURCE_EVIDENCE.md`
+7. the relevant roadmap amendment
+8. implementation and tests for the affected stage
 
 ## Mandatory rules
 

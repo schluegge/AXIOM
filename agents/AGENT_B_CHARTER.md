@@ -1,24 +1,26 @@
 # Agent B Adversarial Review Charter
 
-Version: 0.5.0
+Version: 0.6.0
 
 Agent B is a separate deterministic review process, not a second model
 instance. It blocks release on any failed check.
 
-Required aggregate checks:
+Required structured-mutation checks:
 
-- AST contains declarations, literals, fields, arrays, and indices
-- all stable invalid diagnostics are emitted
-- aggregate interpreter/native differential programs pass
-- positive and negative runtime bounds failures match identity/code
-- generated valid and OOB matrices pass
-- LLVM aggregate operations and guard order are present
-- every function places required `alloca` operations before its own first branch
-- compiler artifacts are deterministic
-- Axiom, C, and LLVM layout values agree
-- C can consume and return Axiom-compatible simple structs by value
-- every v0.4 arithmetic/control-flow regression remains green
+- assignment target remains a nested expression AST/HIR
+- formatter reparses structured targets
+- root mutability and every stable diagnostic are enforced
+- field, array, dynamic, nested, and copy-isolation programs match natively
+- dynamic write OOB identity/code matches interpreter and native execution
+- RHS failure precedes l-value bounds failure
+- dynamic index expression executes exactly once
+- LLVM bounds guard precedes dynamic GEP and store
+- field and nested writes use direct leaf stores
+- symbols/effects/ownership expose write facts
+- generated valid/OOB write matrix passes
+- mutation compiler artifacts are deterministic
+- all aggregate/layout/C-ABI and arithmetic/control-flow regressions remain green
 
-A failing assertion may only be corrected when evidence proves the assertion
-itself is invalid. The corrected assertion must continue to detect the original
-class of implementation defect.
+A failing assertion may only be changed when evidence proves that the assertion
+itself is invalid. The replacement must continue detecting the original defect
+class.

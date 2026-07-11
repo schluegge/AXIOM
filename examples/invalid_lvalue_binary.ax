@@ -1,0 +1,8 @@
+profile system;
+
+fn main() -> i32 {
+    var left: i32 = 1;
+    var right: i32 = 2;
+    left + right = 3;
+    return left;
+}

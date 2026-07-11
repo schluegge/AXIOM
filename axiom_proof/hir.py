@@ -52,7 +52,7 @@ def lower_statement(node: Node, types: dict[str, str]) -> dict[str, Any]:
             value=lower_expr(node.fields["value"], types),
         )
     elif node.kind == "AssignmentStmt":
-        result["target"] = node.fields["target"]
+        result["target"] = lower_expr(node.fields["target"], types)
         result["value"] = lower_expr(node.fields["value"], types)
     elif node.kind == "ReturnStmt":
         result["value"] = lower_expr(node.fields["value"], types)
@@ -110,7 +110,7 @@ def lower_program(program: Node, types: dict[str, str]) -> dict[str, Any]:
         )
     return {
         "document_kind": "axiom.hir",
-        "schema_version": "0.5.0",
+        "schema_version": "0.6.0",
         "structs": structs,
         "functions": functions,
     }

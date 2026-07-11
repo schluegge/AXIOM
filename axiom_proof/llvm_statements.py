@@ -25,13 +25,15 @@ class LLVMStatementMixin:
                     mutable=statement.kind == "VarStmt",
                 )
             elif statement.kind == "AssignmentStmt":
-                target = environment[statement.fields["target"]]
-                if not target.mutable:
-                    raise ValueError("LLVM backend received assignment to immutable storage")
                 value, type_name = self.emit_expr(statement.fields["value"], environment, context)
-                if type_name != target.type_name:
+                target_ptr, target_type = self.emit_lvalue_ptr(
+                    statement.fields["target"], environment, context
+                )
+                if type_name != target_type:
                     raise ValueError("LLVM backend received mistyped assignment")
-                context.lines.append(f"  store {self.llvm_type(type_name)} {value}, ptr {target.slot}")
+                context.lines.append(
+                    f"  store {self.llvm_type(type_name)} {value}, ptr {target_ptr}"
+                )
             elif statement.kind == "ReturnStmt":
                 value, type_name = self.emit_expr(statement.fields["value"], environment, context)
                 context.lines.append(f"  ret {self.llvm_type(type_name)} {value}")

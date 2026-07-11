@@ -19,10 +19,30 @@ class StructValue:
                 return value
         raise RuntimeError(f"AX-RUNTIME-STRUCT-0001: missing field {name} on {self.type_name}")
 
+    def with_field(self, name: str, value: Any) -> "StructValue":
+        found = False
+        fields: list[tuple[str, Any]] = []
+        for field_name, field_value in self.fields:
+            if field_name == name:
+                fields.append((field_name, value))
+                found = True
+            else:
+                fields.append((field_name, field_value))
+        if not found:
+            raise RuntimeError(f"AX-RUNTIME-STRUCT-0001: missing field {name} on {self.type_name}")
+        return StructValue(self.type_name, tuple(fields))
+
 
 @dataclass(frozen=True)
 class ArrayValue:
     items: tuple[Any, ...]
+
+    def with_item(self, index: int, value: Any) -> "ArrayValue":
+        if not 0 <= index < len(self.items):
+            raise array_index_out_of_bounds(index, len(self.items))
+        items = list(self.items)
+        items[index] = value
+        return ArrayValue(tuple(items))
 
 
 @dataclass
@@ -114,10 +134,8 @@ class Interpreter:
                         mutable=statement.kind == "VarStmt",
                     )
                 elif statement.kind == "AssignmentStmt":
-                    environment.assign(
-                        statement.fields["target"],
-                        self.eval_expr(statement.fields["value"], environment),
-                    )
+                    value = self.eval_expr(statement.fields["value"], environment)
+                    self.assign_lvalue(statement.fields["target"], value, environment)
                 elif statement.kind == "ReturnStmt":
                     raise Returned(self.eval_expr(statement.fields["value"], environment))
                 elif statement.kind == "ExprStmt":
@@ -139,6 +157,57 @@ class Interpreter:
         finally:
             if create_scope:
                 environment.pop()
+
+
+    def resolve_lvalue(
+        self,
+        target: Node,
+        environment: RuntimeEnvironment,
+    ) -> tuple[str, list[tuple[str, Any]]]:
+        if target.kind == "NameExpr":
+            return target.fields["name"], []
+        if target.kind == "FieldExpr":
+            root, selectors = self.resolve_lvalue(target.fields["base"], environment)
+            return root, [*selectors, ("field", target.fields["field"])]
+        if target.kind == "IndexExpr":
+            root, selectors = self.resolve_lvalue(target.fields["base"], environment)
+            index = self.eval_expr(target.fields["index"], environment)
+            return root, [*selectors, ("index", index)]
+        raise RuntimeError(f"AX-RUNTIME-MUT-0001: unsupported l-value {target.kind}")
+
+    def replace_path(
+        self,
+        current: Any,
+        selectors: list[tuple[str, Any]],
+        replacement: Any,
+    ) -> Any:
+        if not selectors:
+            return replacement
+        kind, key = selectors[0]
+        remaining = selectors[1:]
+        if kind == "field":
+            if not isinstance(current, StructValue):
+                raise RuntimeError("AX-RUNTIME-STRUCT-0002: field assignment on non-struct value")
+            updated = self.replace_path(current.get(key), remaining, replacement)
+            return current.with_field(key, updated)
+        if kind == "index":
+            if not isinstance(current, ArrayValue):
+                raise RuntimeError("AX-RUNTIME-INDEX-0002: index assignment on non-array value")
+            if not 0 <= key < len(current.items):
+                raise array_index_out_of_bounds(key, len(current.items))
+            updated = self.replace_path(current.items[key], remaining, replacement)
+            return current.with_item(key, updated)
+        raise RuntimeError(f"AX-RUNTIME-MUT-0002: unsupported l-value selector {kind}")
+
+    def assign_lvalue(
+        self,
+        target: Node,
+        value: Any,
+        environment: RuntimeEnvironment,
+    ) -> None:
+        root_name, selectors = self.resolve_lvalue(target, environment)
+        root_value = environment.get(root_name)
+        environment.assign(root_name, self.replace_path(root_value, selectors, value))
 
     def eval_expr(self, expression: Node, environment: RuntimeEnvironment) -> Any:
         self.tick()
