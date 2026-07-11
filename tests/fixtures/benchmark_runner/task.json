@@ -1,5 +1,4 @@
 {
-  "$schema": "../../../benchmarks/schemas/0.1.0/task.schema.json",
   "document_kind": "axiom.bench.task",
   "schema_version": "0.1.0",
   "task_id": "fixture.runner-conformance",
