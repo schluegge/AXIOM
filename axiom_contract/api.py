@@ -22,6 +22,8 @@ def _pinned_dependencies(root: Path) -> dict[str, str]:
         if name in dependencies:
             raise ValueError(f"duplicate proof dependency pin: {name}")
         dependencies[name] = pinned_version
+    if not dependencies:
+        raise ValueError("requirements-proof.txt contains no proof dependencies")
     return dict(sorted(dependencies.items()))
 
 
@@ -35,6 +37,18 @@ def _installed_dependency_versions(pins: dict[str, str]) -> dict[str, str]:
     return versions
 
 
+def _append_findings(result: dict[str, Any], findings: list[dict[str, str]]) -> None:
+    if not findings:
+        return
+    result["status"] = "failed"
+    result["exit_code"] = 2
+    result["findings"] = sorted(
+        [*result["findings"], *findings],
+        key=lambda item: (item["code"], item["path"], item["message"]),
+    )
+    result["counts"]["findings"] = len(result["findings"])
+
+
 def check_project_contract(
     root: Path,
     contract_path: Path | None = None,
@@ -42,7 +56,38 @@ def check_project_contract(
 ) -> dict[str, Any]:
     resolved_root = root.resolve()
     result = _check_project_contract(resolved_root, contract_path, schema_path)
-    pins = _pinned_dependencies(resolved_root)
+
+    try:
+        pins = _pinned_dependencies(resolved_root)
+    except FileNotFoundError:
+        result["dependency_pins"] = {}
+        result["dependencies"] = {}
+        _append_findings(
+            result,
+            [
+                {
+                    "code": "AX-CONTRACT-0008",
+                    "path": "requirements-proof.txt",
+                    "message": "missing exact proof dependency file",
+                }
+            ],
+        )
+        return result
+    except (OSError, ValueError) as error:
+        result["dependency_pins"] = {}
+        result["dependencies"] = {}
+        _append_findings(
+            result,
+            [
+                {
+                    "code": "AX-CONTRACT-0009",
+                    "path": "requirements-proof.txt",
+                    "message": f"invalid exact proof dependency file: {error}",
+                }
+            ],
+        )
+        return result
+
     installed = _installed_dependency_versions(pins)
     result["dependency_pins"] = pins
     result["dependencies"] = installed
@@ -67,12 +112,5 @@ def check_project_contract(
                 }
             )
 
-    if dependency_findings:
-        result["status"] = "failed"
-        result["exit_code"] = 2
-        result["findings"] = sorted(
-            [*result["findings"], *dependency_findings],
-            key=lambda item: (item["code"], item["path"], item["message"]),
-        )
-        result["counts"]["findings"] = len(result["findings"])
+    _append_findings(result, dependency_findings)
     return result
