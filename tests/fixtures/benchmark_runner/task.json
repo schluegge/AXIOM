@@ -1,0 +1,121 @@
+{
+  "$schema": "../../../benchmarks/schemas/0.1.0/task.schema.json",
+  "document_kind": "axiom.bench.task",
+  "schema_version": "0.1.0",
+  "task_id": "fixture.runner-conformance",
+  "task_version": "1.0.0",
+  "family": "greenfield_function",
+  "classification": "seed_public_after_freeze",
+  "title": "Synthetic runner conformance fixture",
+  "prompt_path": "prompt.md",
+  "candidate_edit_allowlist": ["candidate.txt"],
+  "visible_paths": ["prompt.md"],
+  "variants": {
+    "axiom": {
+      "language": "axiom",
+      "language_pack_id": "fixture.synthetic.axiom",
+      "candidate_path": "candidate.txt",
+      "starter_path": "starter.txt",
+      "reference_solution_path": "reference.txt",
+      "seeded_wrong_paths": ["wrong.txt"],
+      "formatter_command": ["{python}", "{task_root}/harness.py", "format", "{candidate}"],
+      "check_command": ["{python}", "{task_root}/harness.py", "check", "{candidate}"],
+      "public_test_command": ["{python}", "{task_root}/harness.py", "public", "{candidate}"],
+      "acceptance_test_command": ["{python}", "{task_root}/harness.py", "acceptance", "{candidate}"],
+      "security_test_command": ["{python}", "{task_root}/harness.py", "security", "{candidate}"],
+      "expected_entry_point": "synthetic",
+      "declared_dependencies": [],
+      "variant_notes": ["Runner mechanics only; not an AXIOM language task."]
+    },
+    "rust": {
+      "language": "rust",
+      "language_pack_id": "fixture.synthetic.rust",
+      "candidate_path": "candidate.txt",
+      "starter_path": "starter.txt",
+      "reference_solution_path": "reference.txt",
+      "seeded_wrong_paths": ["wrong.txt"],
+      "formatter_command": ["{python}", "{task_root}/harness.py", "format", "{candidate}"],
+      "check_command": ["{python}", "{task_root}/harness.py", "check", "{candidate}"],
+      "public_test_command": ["{python}", "{task_root}/harness.py", "public", "{candidate}"],
+      "acceptance_test_command": ["{python}", "{task_root}/harness.py", "acceptance", "{candidate}"],
+      "security_test_command": ["{python}", "{task_root}/harness.py", "security", "{candidate}"],
+      "expected_entry_point": "synthetic",
+      "declared_dependencies": [],
+      "variant_notes": ["Runner mechanics only; not a Rust language task."]
+    },
+    "zig": {
+      "language": "zig",
+      "language_pack_id": "fixture.synthetic.zig",
+      "candidate_path": "candidate.txt",
+      "starter_path": "starter.txt",
+      "reference_solution_path": "reference.txt",
+      "seeded_wrong_paths": ["wrong.txt"],
+      "formatter_command": ["{python}", "{task_root}/harness.py", "format", "{candidate}"],
+      "check_command": ["{python}", "{task_root}/harness.py", "check", "{candidate}"],
+      "public_test_command": ["{python}", "{task_root}/harness.py", "public", "{candidate}"],
+      "acceptance_test_command": ["{python}", "{task_root}/harness.py", "acceptance", "{candidate}"],
+      "security_test_command": ["{python}", "{task_root}/harness.py", "security", "{candidate}"],
+      "expected_entry_point": "synthetic",
+      "declared_dependencies": [],
+      "variant_notes": ["Runner mechanics only; not a Zig language task."]
+    },
+    "go": {
+      "language": "go",
+      "language_pack_id": "fixture.synthetic.go",
+      "candidate_path": "candidate.txt",
+      "starter_path": "starter.txt",
+      "reference_solution_path": "reference.txt",
+      "seeded_wrong_paths": ["wrong.txt"],
+      "formatter_command": ["{python}", "{task_root}/harness.py", "format", "{candidate}"],
+      "check_command": ["{python}", "{task_root}/harness.py", "check", "{candidate}"],
+      "public_test_command": ["{python}", "{task_root}/harness.py", "public", "{candidate}"],
+      "acceptance_test_command": ["{python}", "{task_root}/harness.py", "acceptance", "{candidate}"],
+      "security_test_command": ["{python}", "{task_root}/harness.py", "security", "{candidate}"],
+      "expected_entry_point": "synthetic",
+      "declared_dependencies": [],
+      "variant_notes": ["Runner mechanics only; not a Go language task."]
+    }
+  },
+  "budgets": {
+    "max_iterations": 3,
+    "max_input_tokens_per_iteration": 1024,
+    "max_output_tokens_per_iteration": 1024,
+    "max_total_tokens": 3072,
+    "max_tool_calls": 0,
+    "max_compiler_invocations": 8,
+    "command_timeout_seconds": 5,
+    "task_timeout_seconds": 30,
+    "max_output_bytes": 4096,
+    "max_feedback_bytes": 8192,
+    "max_candidate_files": 1,
+    "max_candidate_bytes": 1024,
+    "max_changed_lines": 20
+  },
+  "acceptance": {
+    "public_check_ids": ["fixture.public"],
+    "acceptance_check_ids": ["fixture.acceptance"],
+    "security_check_ids": ["fixture.security"],
+    "required_failure_for_seeded_wrong": "acceptance_test_failure"
+  },
+  "provenance": {
+    "authored_at": "2026-07-11T00:00:00Z",
+    "first_public_at": null,
+    "source_origin": "Synthetic AXIOM-Bench runner conformance fixture",
+    "derived_from_known_benchmark": false,
+    "source_hashes": [],
+    "transformation_history": [],
+    "contamination_notes": "Test-only runner fixture; prohibited from benchmark result sets."
+  },
+  "equivalence_review": {
+    "status": "passed",
+    "behavior_contract": "All four variant keys execute the same synthetic byte contract.",
+    "algorithm_equivalent": true,
+    "feedback_differences": [],
+    "review_evidence": ["tests/fixtures/benchmark_runner/harness.py"]
+  },
+  "non_goals": [
+    "No language quality measurement.",
+    "No real compiler/toolchain conformance.",
+    "No untrusted candidate execution."
+  ]
+}
