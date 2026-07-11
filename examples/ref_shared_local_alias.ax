@@ -1,0 +1,8 @@
+profile system;
+
+fn main() -> i32 {
+    var value: i32 = 21;
+    let first: &i32 = &value;
+    let second: &i32 = &value;
+    return value + *first + *second - 21;
+}

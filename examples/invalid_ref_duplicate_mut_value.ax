@@ -1,0 +1,11 @@
+profile system;
+
+fn add(left: &mut i32, right: &mut i32) -> i32 {
+    return *left + *right;
+}
+
+fn main() -> i32 {
+    var value: i32 = 21;
+    let reference: &mut i32 = &mut value;
+    return add(reference, reference);
+}

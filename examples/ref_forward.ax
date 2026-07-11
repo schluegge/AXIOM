@@ -1,0 +1,15 @@
+profile system;
+
+fn increment(value: &mut i32) -> i32 {
+    *value = *value + 1;
+    return *value;
+}
+
+fn forward(value: &mut i32) -> i32 {
+    return increment(value);
+}
+
+fn main() -> i32 {
+    var value: i32 = 41;
+    return forward(&mut value);
+}

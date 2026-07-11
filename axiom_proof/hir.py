@@ -33,6 +33,11 @@ def lower_expr(node: Node, types: dict[str, str]) -> dict[str, Any]:
         result["base"] = lower_expr(node.fields["base"], types)
         result["index"] = lower_expr(node.fields["index"], types)
         result["bounds_check"] = node.fields["index"].kind != "IntegerLiteral"
+    elif node.kind == "BorrowExpr":
+        result["mutable"] = node.fields["mutable"]
+        result["target"] = lower_expr(node.fields["target"], types)
+    elif node.kind == "DerefExpr":
+        result["reference"] = lower_expr(node.fields["reference"], types)
     elif node.kind == "BinaryExpr":
         result["operator"] = node.fields["operator"]
         result["left"] = lower_expr(node.fields["left"], types)
@@ -110,7 +115,7 @@ def lower_program(program: Node, types: dict[str, str]) -> dict[str, Any]:
         )
     return {
         "document_kind": "axiom.hir",
-        "schema_version": "0.6.0",
+        "schema_version": "0.7.0",
         "structs": structs,
         "functions": functions,
     }

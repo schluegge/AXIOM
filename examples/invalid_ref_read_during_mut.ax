@@ -1,0 +1,6 @@
+profile system;
+fn main() -> i32 {
+    var value: i32 = 1;
+    let reference: &mut i32 = &mut value;
+    return value;
+}

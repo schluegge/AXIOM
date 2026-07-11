@@ -17,6 +17,7 @@ from agents.agent_b_aggregate_generated_checks import register as register_aggre
 from agents.agent_b_arithmetic_checks import register as register_arithmetic
 from agents.agent_b_core_checks import register as register_core
 from agents.agent_b_lvalue_checks import register as register_lvalues
+from agents.agent_b_reference_checks import register as register_references
 
 
 def main() -> int:
@@ -34,6 +35,7 @@ def main() -> int:
         register_aggregate_layout()
         register_aggregate_generated()
         register_lvalues()
+        register_references()
         register_core()
         register_arithmetic()
     finally:
@@ -42,7 +44,7 @@ def main() -> int:
     failed = [item for item in support.CHECKS if item["status"] != "passed"]
     report = {
         "document_kind": "axiom.agent-b-adversarial-review",
-        "schema_version": "0.6.0",
+        "schema_version": "0.7.0",
         "status": "failed" if failed else "passed",
         "role": "separate deterministic review process; not a second language-model instance",
         "checks": support.CHECKS,

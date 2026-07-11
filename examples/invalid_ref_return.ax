@@ -1,0 +1,8 @@
+profile system;
+fn escape(value: &i32) -> &i32 {
+    return value;
+}
+fn main() -> i32 {
+    var value: i32 = 1;
+    return *escape(&value);
+}

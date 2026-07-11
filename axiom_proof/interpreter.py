@@ -56,6 +56,20 @@ class RuntimeBinding:
     mutable: bool
 
 
+@dataclass(frozen=True)
+class RuntimeLocation:
+    environment: Any
+    root_name: str
+    selectors: tuple[tuple[str, Any], ...]
+    mutable: bool
+
+
+@dataclass(frozen=True)
+class RuntimeReference:
+    location: RuntimeLocation
+    mutable: bool
+
+
 class RuntimeEnvironment:
     def __init__(self) -> None:
         self.scopes: list[dict[str, RuntimeBinding]] = [{}]
@@ -163,22 +177,66 @@ class Interpreter:
         self,
         target: Node,
         environment: RuntimeEnvironment,
-    ) -> tuple[str, list[tuple[str, Any]]]:
+    ) -> RuntimeLocation:
         if target.kind == "NameExpr":
-            return target.fields["name"], []
+            name = target.fields["name"]
+            binding = environment.resolve(name)
+            return RuntimeLocation(environment, name, (), binding.mutable)
+        if target.kind == "DerefExpr":
+            reference = self.eval_expr(target.fields["reference"], environment)
+            if not isinstance(reference, RuntimeReference):
+                raise RuntimeError("AX-RUNTIME-REF-0001: dereference requires a reference")
+            return RuntimeLocation(
+                reference.location.environment,
+                reference.location.root_name,
+                reference.location.selectors,
+                reference.mutable,
+            )
         if target.kind == "FieldExpr":
-            root, selectors = self.resolve_lvalue(target.fields["base"], environment)
-            return root, [*selectors, ("field", target.fields["field"])]
+            base = self.resolve_lvalue(target.fields["base"], environment)
+            return RuntimeLocation(
+                base.environment,
+                base.root_name,
+                (*base.selectors, ("field", target.fields["field"])),
+                base.mutable,
+            )
         if target.kind == "IndexExpr":
-            root, selectors = self.resolve_lvalue(target.fields["base"], environment)
+            base = self.resolve_lvalue(target.fields["base"], environment)
             index = self.eval_expr(target.fields["index"], environment)
-            return root, [*selectors, ("index", index)]
+            return RuntimeLocation(
+                base.environment,
+                base.root_name,
+                (*base.selectors, ("index", index)),
+                base.mutable,
+            )
         raise RuntimeError(f"AX-RUNTIME-MUT-0001: unsupported l-value {target.kind}")
+
+    def read_path(self, current: Any, selectors: tuple[tuple[str, Any], ...]) -> Any:
+        for kind, key in selectors:
+            if kind == "field":
+                if not isinstance(current, StructValue):
+                    raise RuntimeError("AX-RUNTIME-STRUCT-0002: field access on non-struct value")
+                current = current.get(key)
+            elif kind == "index":
+                if not isinstance(current, ArrayValue):
+                    raise RuntimeError("AX-RUNTIME-INDEX-0002: index access on non-array value")
+                if not 0 <= key < len(current.items):
+                    raise array_index_out_of_bounds(key, len(current.items))
+                current = current.items[key]
+            else:
+                raise RuntimeError(f"AX-RUNTIME-MUT-0002: unsupported l-value selector {kind}")
+        return current
+
+    def read_location(self, location: RuntimeLocation) -> Any:
+        return self.read_path(
+            location.environment.get(location.root_name),
+            location.selectors,
+        )
 
     def replace_path(
         self,
         current: Any,
-        selectors: list[tuple[str, Any]],
+        selectors: tuple[tuple[str, Any], ...],
         replacement: Any,
     ) -> Any:
         if not selectors:
@@ -199,15 +257,22 @@ class Interpreter:
             return current.with_item(key, updated)
         raise RuntimeError(f"AX-RUNTIME-MUT-0002: unsupported l-value selector {kind}")
 
+    def assign_location(self, location: RuntimeLocation, value: Any) -> None:
+        if not location.mutable:
+            raise RuntimeError("AX-RUNTIME-REF-0002: write through immutable location")
+        root_value = location.environment.get(location.root_name)
+        location.environment.assign(
+            location.root_name,
+            self.replace_path(root_value, location.selectors, value),
+        )
+
     def assign_lvalue(
         self,
         target: Node,
         value: Any,
         environment: RuntimeEnvironment,
     ) -> None:
-        root_name, selectors = self.resolve_lvalue(target, environment)
-        root_value = environment.get(root_name)
-        environment.assign(root_name, self.replace_path(root_value, selectors, value))
+        self.assign_location(self.resolve_lvalue(target, environment), value)
 
     def eval_expr(self, expression: Node, environment: RuntimeEnvironment) -> Any:
         self.tick()
@@ -215,6 +280,17 @@ class Interpreter:
             return expression.fields["value"]
         if expression.kind == "NameExpr":
             return environment.get(expression.fields["name"])
+        if expression.kind == "BorrowExpr":
+            location = self.resolve_lvalue(expression.fields["target"], environment)
+            mutable = bool(expression.fields["mutable"])
+            if mutable and not location.mutable:
+                raise RuntimeError("AX-RUNTIME-REF-0003: mutable borrow of immutable location")
+            return RuntimeReference(location, mutable)
+        if expression.kind == "DerefExpr":
+            reference = self.eval_expr(expression.fields["reference"], environment)
+            if not isinstance(reference, RuntimeReference):
+                raise RuntimeError("AX-RUNTIME-REF-0001: dereference requires a reference")
+            return self.read_location(reference.location)
         if expression.kind == "CallExpr":
             return self.call(
                 expression.fields["callee"],

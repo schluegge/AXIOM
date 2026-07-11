@@ -1,0 +1,11 @@
+profile system;
+
+fn read(value: &i32) -> i32 {
+    return *value;
+}
+
+fn main() -> i32 {
+    var values: [i32; 2] = [10, 20];
+    var index: i32 = 2;
+    return read(&values[index]);
+}

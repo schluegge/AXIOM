@@ -20,3 +20,19 @@ class LocalBinding:
     kind: str
 
 
+@dataclass(frozen=True)
+class LValueInfo:
+    root_binding: LocalBinding | None
+    type_name: str
+    writable: bool
+    via_reference: bool = False
+
+
+@dataclass(frozen=True)
+class BorrowRecord:
+    root_node_id: str
+    root_name: str
+    mutable: bool
+    holder_node_id: str
+    borrow_node_id: str
+    temporary: bool

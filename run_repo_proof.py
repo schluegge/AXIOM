@@ -111,6 +111,20 @@ def main() -> int:
         "lvalue-index-once": ("lvalue_index_once.ax", 42, None),
         "lvalue-oob-write": ("lvalue_oob_write.ax", 108, "array_index_out_of_bounds"),
         "lvalue-rhs-first": ("lvalue_rhs_first.ax", 104, "i32_divide_by_zero"),
+        "ref-shared-call": ("ref_shared_call.ax", 42, None),
+        "ref-mut-call": ("ref_mut_call.ax", 42, None),
+        "ref-shared-alias": ("ref_shared_alias.ax", 42, None),
+        "ref-field-mut": ("ref_field_mut.ax", 42, None),
+        "ref-array-mut": ("ref_array_mut.ax", 44, None),
+        "ref-local-shared": ("ref_local_shared.ax", 42, None),
+        "ref-scope-release": ("ref_scope_release.ax", 42, None),
+        "ref-argument-order": ("ref_argument_order.ax", 42, None),
+        "ref-dynamic-once": ("ref_dynamic_once.ax", 42, None),
+        "ref-forward": ("ref_forward.ax", 42, None),
+        "ref-shared-local-alias": ("ref_shared_local_alias.ax", 42, None),
+        "ref-shared-then-mut-scope": ("ref_shared_then_mut_scope.ax", 42, None),
+        "ref-nested-call-release": ("ref_nested_call_release.ax", 42, None),
+        "ref-oob": ("ref_oob.ax", 108, "array_index_out_of_bounds"),
     }
     results: dict[str, object] = {}
     for name, (fixture, expected_exit, expected_panic) in cases.items():
@@ -157,6 +171,25 @@ def main() -> int:
         "invalid_lvalue_parameter.ax": "AX-MUT-0001",
         "invalid_lvalue_temporary_field.ax": "AX-MUT-0002",
         "invalid_lvalue_binary.ax": "AX-MUT-0002",
+        "invalid_ref_mut_immutable.ax": "AX-BORROW-0001",
+        "invalid_ref_shared_during_mut.ax": "AX-BORROW-0002",
+        "invalid_ref_mut_conflict.ax": "AX-BORROW-0003",
+        "invalid_ref_read_during_mut.ax": "AX-BORROW-0004",
+        "invalid_ref_write_during_shared.ax": "AX-BORROW-0005",
+        "invalid_ref_shared_write.ax": "AX-BORROW-0006",
+        "invalid_ref_reborrow.ax": "AX-BORROW-0007",
+        "invalid_ref_duplicate_mut_value.ax": "AX-BORROW-0008",
+        "invalid_ref_use_after_loan_in_args.ax": "AX-BORROW-0009",
+        "invalid_ref_nested_call_loan.ax": "AX-BORROW-0009",
+        "invalid_ref_return.ax": "AX-REF-0001",
+        "invalid_ref_field.ax": "AX-REF-0002",
+        "invalid_ref_array.ax": "AX-REF-0002",
+        "invalid_ref_var_binding.ax": "AX-REF-0004",
+        "invalid_ref_nonborrow_initializer.ax": "AX-REF-0005",
+        "invalid_ref_deref_scalar.ax": "AX-REF-0006",
+        "invalid_ref_temporary.ax": "AX-MUT-0002",
+        "invalid_ref_two_mut_args.ax": "AX-BORROW-0003",
+        "invalid_ref_argument_order.ax": "AX-BORROW-0004",
     }
     invalid_documents: dict[str, list[str]] = {}
     for fixture, expected_code in invalid_expected.items():
@@ -177,7 +210,7 @@ def main() -> int:
 
     manifest = {
         "document_kind": "axiom.repo-proof",
-        "schema_version": "0.6.0",
+        "schema_version": "0.7.0",
         "status": "passed",
         "unit_test_exit_code": tests.returncode,
         "unit_tests": test_count,
@@ -198,8 +231,10 @@ def main() -> int:
         "layout": layout_document,
         "panic_code_map": {str(code): name for code, name in sorted(PANIC_NAMES.items())},
         "known_unproven": [
-            "references, borrowing, and owned-resource semantics",
-            "slices and pointer syntax",
+            "raw pointers, null pointers, pointer arithmetic, and unsafe blocks",
+            "reference returns, reference fields, arrays of references, and reborrowing",
+            "lifetime parameters, non-lexical lifetimes, and partial-field borrowing",
+            "slices, heap allocation, and owned-resource destruction semantics",
             "broad cross-platform ABI stability",
             "complete effects and capability system",
             "Rust bootstrap parity",
@@ -221,7 +256,7 @@ def main() -> int:
     print(
         canonical_json({
             "status": "passed",
-            "schema_version": "0.6.0",
+            "schema_version": "0.7.0",
             "evidence_zip": ZIP.as_posix(),
             "unit_tests": test_count,
             "agent_b_checks": agent_b_report["passed"],

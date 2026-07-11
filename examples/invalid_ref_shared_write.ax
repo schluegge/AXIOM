@@ -1,0 +1,7 @@
+profile system;
+fn main() -> i32 {
+    var value: i32 = 1;
+    let reference: &i32 = &value;
+    *reference = 2;
+    return value;
+}

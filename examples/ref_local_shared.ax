@@ -1,0 +1,10 @@
+profile system;
+
+fn main() -> i32 {
+    var value: i32 = 42;
+    if true {
+        let shared: &i32 = &value;
+        return *shared;
+    }
+    return 0;
+}

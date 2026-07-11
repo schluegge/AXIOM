@@ -39,10 +39,10 @@ class ExpressionParserMixin:
         return expression
 
     def parse_multiplicative(self) -> Node:
-        expression = self.parse_postfix()
+        expression = self.parse_unary()
         while self.current().kind in {"star", "slash", "percent"}:
             operator = self.take()
-            right = self.parse_postfix()
+            right = self.parse_unary()
             expression = self.node(
                 "BinaryExpr",
                 expression.span,
@@ -52,6 +52,29 @@ class ExpressionParserMixin:
                 right=right,
             )
         return expression
+
+    def parse_unary(self) -> Node:
+        if self.at("ampersand"):
+            start = self.take()
+            mutable = self.accept("mut") is not None
+            target = self.parse_unary()
+            return self.node(
+                "BorrowExpr",
+                start.span,
+                target.span,
+                target=target,
+                mutable=mutable,
+            )
+        if self.at("star"):
+            start = self.take()
+            reference = self.parse_unary()
+            return self.node(
+                "DerefExpr",
+                start.span,
+                reference.span,
+                reference=reference,
+            )
+        return self.parse_postfix()
 
     def parse_postfix(self) -> Node:
         expression = self.parse_atom()

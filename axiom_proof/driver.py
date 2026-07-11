@@ -43,7 +43,7 @@ def compile_source(source_path: Path) -> dict[str, Any]:
     tokens, lexer_diagnostics = Lexer(source).run()
     token_document = {
         "document_kind": "axiom.tokens",
-        "schema_version": "0.6.0",
+        "schema_version": "0.7.0",
         "source": {
             "path": source.path,
             "sha256": source.sha256,
@@ -61,7 +61,7 @@ def compile_source(source_path: Path) -> dict[str, Any]:
     if program is not None:
         ast_document = {
             "document_kind": "axiom.ast",
-            "schema_version": "0.6.0",
+            "schema_version": "0.7.0",
             "root": program.to_dict(),
         }
         semantic = SemanticAnalyzer(program)
@@ -86,7 +86,7 @@ def prove(source_path: Path, output_dir: Path, clang: str = "clang") -> dict[str
         canonical_json(
             {
                 "document_kind": "axiom.diagnostics",
-                "schema_version": "0.6.0",
+                "schema_version": "0.7.0",
                 "diagnostics": [diagnostic.to_dict() for diagnostic in diagnostics],
             }
         ),
@@ -119,7 +119,7 @@ def prove(source_path: Path, output_dir: Path, clang: str = "clang") -> dict[str
         "ownership.json": semantic.ownership_document(),
         "layouts.json": {
             "document_kind": "axiom.layouts",
-            "schema_version": "0.6.0",
+            "schema_version": "0.7.0",
             "target": "x86_64-unknown-linux-gnu",
             "layouts": [semantic.layout_document(name)["layout"] for name in sorted(semantic.registry.structs)],
         },
@@ -149,7 +149,7 @@ def prove(source_path: Path, output_dir: Path, clang: str = "clang") -> dict[str
         }
     interpreter_document = {
         "document_kind": "axiom.interpreter-result",
-        "schema_version": "0.6.0",
+        "schema_version": "0.7.0",
         "outcome": interpreter_outcome,
         "exit_code": interpreter_result,
         "steps": interpreter.steps,

@@ -1,0 +1,11 @@
+profile system;
+
+fn update(before: i32, target: &mut i32) -> i32 {
+    *target = before + 1;
+    return *target;
+}
+
+fn main() -> i32 {
+    var value: i32 = 41;
+    return update(value, &mut value);
+}

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .model import Diagnostic, Node, Span, Token, merge_span
-from .type_system import array_type
+from .type_system import array_type, reference_type
 from .parser_expressions import ExpressionParserMixin
 from .parser_declarations import DeclarationParserMixin
 from .parser_statements import StatementParserMixin
@@ -84,6 +84,11 @@ class Parser(DeclarationParserMixin, StatementParserMixin, ExpressionParserMixin
         return self.node("ProfileDecl", start.span, end.span, name=name.lexeme)
 
     def parse_type_name(self) -> tuple[str, Span, Span]:
+        if self.at("ampersand"):
+            start = self.take()
+            mutable = self.accept("mut") is not None
+            target, _, end = self.parse_type_name()
+            return reference_type(target, mutable), start.span, end
         if self.at("identifier"):
             token = self.take()
             return token.lexeme, token.span, token.span

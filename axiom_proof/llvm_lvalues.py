@@ -3,7 +3,7 @@ from __future__ import annotations
 from .arithmetic import PANIC_INDEX_OUT_OF_BOUNDS
 from .llvm_model import FunctionContext, Storage
 from .model import Node
-from .type_system import parse_array_type
+from .type_system import parse_array_type, parse_reference_type
 
 
 class LLVMLValueMixin:
@@ -12,15 +12,34 @@ class LLVMLValueMixin:
         target: Node,
         environment: dict[str, Storage],
         context: FunctionContext,
+        *,
+        require_mutable: bool = True,
     ) -> tuple[str, str]:
         if target.kind == "NameExpr":
             storage = environment[target.fields["name"]]
-            if not storage.mutable:
-                raise ValueError("LLVM backend received assignment through immutable storage")
+            if require_mutable and not storage.mutable:
+                raise ValueError("LLVM backend received write/borrow through immutable storage")
             return storage.slot, storage.type_name
 
+        if target.kind == "DerefExpr":
+            reference_value, reference_type_name = self.emit_expr(
+                target.fields["reference"], environment, context
+            )
+            parsed = parse_reference_type(reference_type_name)
+            if parsed is None:
+                raise ValueError("LLVM backend received dereference l-value on non-reference")
+            referent, mutable = parsed
+            if require_mutable and not mutable:
+                raise ValueError("LLVM backend received write through shared reference")
+            return reference_value, referent
+
         if target.kind == "FieldExpr":
-            base_ptr, base_type = self.emit_lvalue_ptr(target.fields["base"], environment, context)
+            base_ptr, base_type = self.emit_lvalue_ptr(
+                target.fields["base"],
+                environment,
+                context,
+                require_mutable=require_mutable,
+            )
             definition = self.registry.struct(base_type)
             if definition is None:
                 raise ValueError("LLVM backend received field l-value on non-struct")
@@ -36,7 +55,12 @@ class LLVMLValueMixin:
             return pointer, field.type_name
 
         if target.kind == "IndexExpr":
-            base_ptr, base_type = self.emit_lvalue_ptr(target.fields["base"], environment, context)
+            base_ptr, base_type = self.emit_lvalue_ptr(
+                target.fields["base"],
+                environment,
+                context,
+                require_mutable=require_mutable,
+            )
             array = parse_array_type(base_type)
             if array is None:
                 raise ValueError("LLVM backend received index l-value on non-array")

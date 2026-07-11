@@ -12,18 +12,28 @@ from .type_system import (
     StructField,
     TypeRegistry,
     parse_array_type,
+    parse_reference_type,
+    contains_reference,
 )
 
 
 from .semantic_model import FunctionSignature, LocalBinding
 from .semantic_blocks import SemanticBlockMixin
+from .semantic_borrows import SemanticBorrowMixin
 from .semantic_statements import SemanticStatementMixin
 from .semantic_lvalues import SemanticLValueMixin
 from .semantic_expressions import SemanticExpressionMixin
 from .semantic_documents import SemanticDocumentMixin
 
 
-class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatementMixin, SemanticExpressionMixin, SemanticDocumentMixin):
+class SemanticAnalyzer(
+    SemanticBlockMixin,
+    SemanticBorrowMixin,
+    SemanticLValueMixin,
+    SemanticStatementMixin,
+    SemanticExpressionMixin,
+    SemanticDocumentMixin,
+):
     def __init__(self, program: Node):
         self.program = program
         self.diagnostics: list[Diagnostic] = []
@@ -33,6 +43,10 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatemen
         self.references: list[dict[str, Any]] = []
         self.call_graph: dict[str, list[str]] = {}
         self.function_facts: dict[str, dict[str, Any]] = {}
+        self.borrow_scopes: list[list[Any]] = []
+        self.borrow_events: list[dict[str, Any]] = []
+        self.current_function_name = ""
+        self.reference_loan_scopes: list[set[str]] = []
 
     def analyze(self) -> None:
         self.collect_structs()
@@ -80,6 +94,14 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatemen
                 continue
             for field in declaration.fields["fields"]:
                 type_name = field.fields["type_name"]
+                if contains_reference(type_name):
+                    self.error(
+                        "AX-REF-0002",
+                        f"references cannot be stored in struct fields: {name}.{field.fields['name']}",
+                        field,
+                        "borrow_checker",
+                    )
+                    continue
                 array = parse_array_type(type_name)
                 if array is not None and array[1] <= 0:
                     self.error(
@@ -117,9 +139,18 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatemen
                 continue
             parameter_types = tuple(parameter.fields["type_name"] for parameter in function.fields["parameters"])
             return_type = function.fields["return_type"]
-            for type_name in (*parameter_types, return_type):
-                if not self.type_is_supported(type_name):
+            for type_name in parameter_types:
+                reference = parse_reference_type(type_name)
+                if contains_reference(type_name) and reference is None:
+                    self.error("AX-REF-0002", f"references cannot be stored in aggregate parameter type: {type_name}", function, "borrow_checker")
+                elif not self.type_is_supported(type_name):
                     self.error("AX-TYPE-0004", f"unsupported type: {type_name}", function, "type_checker")
+            if parse_reference_type(return_type) is not None:
+                self.error("AX-REF-0001", "returning references is outside the v0.7 subset", function, "borrow_checker")
+            elif contains_reference(return_type):
+                self.error("AX-REF-0002", f"references cannot be stored in return type: {return_type}", function, "borrow_checker")
+            elif not self.type_is_supported(return_type):
+                self.error("AX-TYPE-0004", f"unsupported type: {return_type}", function, "type_checker")
             self.functions[name] = FunctionSignature(name, parameter_types, return_type, function.node_id)
             self.call_graph[name] = []
             self.function_facts[name] = {
@@ -134,6 +165,11 @@ class SemanticAnalyzer(SemanticBlockMixin, SemanticLValueMixin, SemanticStatemen
                 "index_accesses": 0,
                 "field_writes": 0,
                 "index_writes": 0,
+                "shared_borrows": 0,
+                "mutable_borrows": 0,
+                "deref_reads": 0,
+                "deref_writes": 0,
+                "mutable_reference_loans": 0,
             }
 
     def resolve_local(self, scopes: list[dict[str, LocalBinding]], name: str) -> LocalBinding | None:

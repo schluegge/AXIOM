@@ -1,0 +1,17 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+fn set(value: &mut i32) -> i32 {
+    *value = 40;
+    return *value;
+}
+
+fn main() -> i32 {
+    var pair: Pair = Pair { left: 2, right: 3 };
+    set(&mut pair.right);
+    return pair.left + pair.right;
+}

@@ -9,6 +9,7 @@ from .llvm_model import FunctionContext, Storage
 from .llvm_support import LLVMSupportMixin
 from .llvm_expressions import LLVMExpressionMixin
 from .llvm_scalar_expressions import LLVMScalarExpressionMixin
+from .llvm_reference_expressions import LLVMReferenceExpressionMixin
 from .llvm_aggregate_expressions import LLVMAggregateExpressionMixin
 from .llvm_binary_expressions import LLVMBinaryExpressionMixin
 from .llvm_arithmetic import LLVMArithmeticMixin
@@ -20,6 +21,7 @@ class LLVMBackend(
     LLVMSupportMixin,
     LLVMArithmeticMixin,
     LLVMScalarExpressionMixin,
+    LLVMReferenceExpressionMixin,
     LLVMAggregateExpressionMixin,
     LLVMBinaryExpressionMixin,
     LLVMExpressionMixin,
