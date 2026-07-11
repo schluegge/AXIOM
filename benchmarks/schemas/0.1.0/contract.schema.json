@@ -21,6 +21,7 @@
     "claim_policy"
   ],
   "properties": {
+    "$schema": {"const": "../../schemas/0.1.0/contract.schema.json"},
     "document_kind": {"const": "axiom.bench.contract"},
     "schema_version": {"const": "0.1.0"},
     "benchmark_series": {"const": "0.1.x"},
