@@ -33,8 +33,11 @@ class ProjectContractTests(unittest.TestCase):
         result = check_project_contract(ROOT, CONTRACT, SCHEMA)
         self.assertEqual(result["status"], "passed", render_text(result))
         self.assertEqual(result["exit_code"], 0)
-        self.assertEqual(result["counts"]["current_features"], 7)
+        self.assertEqual(result["counts"]["current_features"], 8)
         self.assertEqual(result["counts"]["findings"], 0)
+        features = {item["id"]: item for item in self.load_contract()["features"]}
+        self.assertEqual(features["benchmark.trusted-conformance-0.1"]["status"], "implemented")
+        self.assertEqual(features["benchmark.trusted-conformance-0.1"]["proven_targets"], [])
 
     def test_report_is_deterministic(self) -> None:
         first = check_project_contract(ROOT, CONTRACT, SCHEMA)

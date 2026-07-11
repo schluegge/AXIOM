@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/benchmarks/schemas/0.1.0/bundle-manifest.schema.json",
+  "title": "AXIOM-Bench 0.1 conformance bundle manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "schema_version",
+    "bundle_kind",
+    "task_id",
+    "language",
+    "adapter",
+    "files",
+    "semantic_sha256"
+  ],
+  "properties": {
+    "document_kind": {"const": "axiom.bench.bundle-manifest"},
+    "schema_version": {"const": "0.1.0"},
+    "bundle_kind": {"const": "trusted-conformance"},
+    "task_id": {"type": "string", "minLength": 1},
+    "language": {"enum": ["axiom", "rust", "zig", "go"]},
+    "adapter": {"enum": ["reference", "seeded_wrong"]},
+    "files": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sha256", "size_bytes"],
+        "properties": {
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "size_bytes": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "semantic_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

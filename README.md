@@ -1,52 +1,35 @@
 # AXIOM v0.7.0 Reference Compiler
 
-AXIOM is an AI-first systems language project. This repository currently
-contains an executed Python/LLVM semantic oracle for the planned Rust bootstrap
-compiler.
+AXIOM is an AI-first systems-language research project. This repository contains
+an executed Python/LLVM semantic oracle and the M1 foundation of a
+provider-neutral benchmark. It is not yet a production compiler or AXIOM v1.0.
 
-The first product target is deliberately focused:
+The focused v1 product target is:
 
 ```text
 safe deterministic local CLI and structured-data tools
 ```
 
-The canonical path to AXIOM v1.0 is defined by:
+Normative semantic specifications are the primary authority for language
+meaning. `contracts/project.json` is the validated current-state index;
+`MVP_ROADMAP.md`, `roadmap/v1.json`, and issue #9 govern implementation
+sequence; `AI_FIRST_MVP_CONTRACT.md` and release gate #25 govern measurable
+product claims.
 
-- `MVP_ROADMAP.md`
-- `AI_FIRST_MVP_CONTRACT.md`
-- `V1_TRACKING.md`
-- machine-readable graph `roadmap/v1.json`
-- machine-readable current-state index `contracts/project.json`
-- GitHub program issue #9
-- GitHub release gate #25
-
-AXIOM will not claim to be measurably better for AI-driven development merely
-because its own tests pass. The v1 claim requires a preregistered comparison
-against Rust, Zig, and Go with preserved prompts, failures, traces, hidden tests,
-and statistical evidence.
-
-The current vertical compiler path is:
+## Current compiler path
 
 ```text
 UTF-8 source
-→ lexer
-→ parser and versioned AST
-→ canonical formatter
-→ name/type/effect/l-value/borrow analysis
-→ target layout engine
-→ HIR and CFG
-→ interpreter
-→ checked LLVM IR
-→ native runtime boundary
+→ lexer and parser
+→ versioned AST and canonical formatter
+→ semantic, effect, l-value, and borrow analysis
+→ layout, HIR, and CFG
+→ interpreter and checked LLVM IR
 → Clang executable
 → interpreter/native differential proof
 ```
 
-## Current implemented language subset
-
-The following feature IDs are checked against `contracts/project.json`. Text
-outside this block may explain the features but may not add a language
-implementation claim that is absent from the contract.
+## Proven language subset
 
 <!-- AXIOM-PROJECT-CONTRACT:FEATURES:BEGIN -->
 - `core.vertical-pipeline` — UTF-8 source, functions, lexical scopes, canonical formatting, semantic documents, interpreter, LLVM, Clang, and differential execution.
@@ -57,31 +40,43 @@ implementation claim that is absent from the contract.
 - `memory.scoped-references` — non-null scoped `&T` and `&mut T` with conservative lexical whole-root borrow checking.
 <!-- AXIOM-PROJECT-CONTRACT:FEATURES:END -->
 
-The current primitive source types are `i32` and `bool`. The accepted profiles
-are `system` and `script`. Reference parameters and immutable local reference
-bindings are supported within the restrictions in `REFERENCE_SEMANTICS.md`.
+The primitive source types are `i32` and `bool`. Supported profiles are
+`system` and `script`.
 
-Example:
+## AXIOM-Bench M1 state
 
-```axiom
-fn increment(value: &mut i32) -> i32 {
-    *value = *value + 1;
-    return *value;
-}
+`benchmark.contract-0.1` implements the methodology, preregistration, schemas,
+offline validator, contamination and fairness laws, trust boundary, and
+adversarial contract checks.
 
-fn main() -> i32 {
-    var value: i32 = 41;
-    return increment(&mut value);
-}
-```
+`benchmark.trusted-conformance-0.1` implements repository-controlled reference
+and seeded-wrong execution, bounded command arrays, deterministic canonical
+bundles, and subprocess-free replay. The runner enforces command and task
+timeouts plus output, feedback, invocation, candidate-byte, file, and
+changed-line limits. Local model-generated candidates remain blocked pending an
+approved isolated backend.
 
-## Current proof
+Canonical command records and stdout/stderr payloads replace temporary workspace
+and task-root paths with stable placeholders. Raw Evidence retains the original
+bytes outside the canonical bundle. Replay bounds actual decompressed ZIP bytes,
+not only archive metadata, and converts malformed or memory-exhausting input
+into a failed report.
 
-Requirements:
+Replay verifies candidate bytes against retained attempt hashes and derives
+phase outcomes and failure reasons from command records, stream sizes, limits,
+and trace terminal events instead of trusting stored outcome flags. The
+repository proof attacks both candidate replacement and command-result
+rewriting after the attacker repairs the manifest and internal hash chain.
 
-- Python 3.11+
-- Clang with textual LLVM IR support
-- dependencies pinned in `requirements-proof.txt`
+The repository proof uses a synthetic four-language-key fixture to prove runner
+mechanics: reference success, exact seeded-wrong rejection, byte-identical
+reference bundles, tamper detection, and replay without a subprocess. This is
+not a language comparison or evidence that AXIOM is better for AI development.
+
+## Verification
+
+Requirements are Python 3.11+, Clang with textual LLVM IR support, and the exact
+packages in `requirements-proof.txt`.
 
 ```bash
 python3 -m pip install -r requirements-proof.txt
@@ -90,115 +85,31 @@ python3 tools/check_benchmark_contract.py
 python3 run_repo_proof.py
 ```
 
-The runner executes the project-contract gate, proposed AXIOM-Bench contract
-gate, complete unit/integration suite, separate Agent B process, native
-differential corpus, invalid diagnostics, generated matrices, layout/ABI checks,
-and reproducibility-sensitive Evidence generation. It creates:
+The canonical command creates:
 
 ```text
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
 
-## Current M1 benchmark state
-
-The provider-neutral AXIOM-Bench `0.1.x` methodology and preregistration are
-implemented and release-blocking through:
-
-- `AXIOM_BENCH_SPEC.md`
-- `AXIOM_BENCH_PREREGISTRATION.md`
-- `M1_BENCHMARK_SOURCE_EVIDENCE.md`
-- `benchmarks/contracts/0.1.0/contract.json`
-- eight strict Draft 2020-12 schemas
-- `tools/check_benchmark_contract.py`
-- adversarial unit and Agent B checks
-
-The benchmark suite itself is **not frozen or complete**. No runner, language
-packs, task corpus, toolchain matrix, reference conformance bundle, seeded-wrong
-bundle, replay bundle, or live-model result is claimed yet.
-
-The contract already enforces:
-
-- exactly three model iterations;
-- separate language-only, compiler-assisted, and full-agent lanes;
-- AXIOM, Rust, Zig, and Go variants;
-- public/base checks separate from acceptance checks;
-- immutable raw completion evidence;
-- no remote task dependency;
-- controlled-holdout provenance rules;
-- no local execution of untrusted model output;
-- no AI-first superiority claim from the M1 seed.
+The current proof target includes 109 unit/integration tests, 73 separate Agent
+B checks, trusted conformance and replay bundles, 38 interpreter/native cases,
+52 invalid fixtures, and deterministic Evidence.
 
 ## Ordered path to v1.0
 
-The current v0.7 semantics are frozen while the v1 foundation is established.
-Every milestone has a dedicated GitHub issue and a mechanical exit gate:
+M0 is complete. M1 is active. M2 through M13 remain blocked in strict order:
+Rust bootstrap, stable protocol, scalar completion, typed failure, generics,
+ownership, dynamic text, modules/projects, capabilities, standard library/JSON,
+golden applications and Windows/Linux hardening, then the frozen holdout release
+decision. Raw pointers and general-purpose `unsafe` remain post-v1.
 
-1. M0 / #11 — project authority and v0.7 consistency, complete;
-2. M1 / #12 — contamination-aware AXIOM-Bench seed, active;
-3. M2 / #13 — independent Rust bootstrap parity for v0.7;
-4. M3 / #14 — stable compiler and agent interaction protocol;
-5. M4 / #15 — scalar and explicit-conversion foundation;
-6. M5 / #16 — algebraic variants, exhaustive matching, `Option`, and `Result`;
-7. M6 / #17 — minimal monomorphized generics;
-8. M7 / #18 — moves, ownership, and deterministic destruction;
-9. M8 / #19 — bytes, slices, UTF-8 strings, and lists;
-10. M9 / #20 — modules, visibility, manifest, and lockfile;
-11. M10 / #21 — declared external effects and least-authority capabilities;
-12. M11 / #22 — minimal standard library and deterministic JSON;
-13. M12 / #23 — golden applications, Windows/Linux proof, and hardening;
-14. M13 / #24 — frozen holdout benchmark and release decision;
-15. V1 / #25 — stable `v1.0.0` release and compatibility gate.
+## Explicit non-proof boundary
 
-Exactly one language milestone may be active at a time. The repository action
-`.github/workflows/v1-roadmap-contract.yml` verifies the machine-readable graph
-and live GitHub issue state. New capabilities and pull requests use mandatory
-GitHub forms/templates that require source evidence, normative semantics,
-vertical proof, benchmark deltas, and exact-PR Evidence.
+The repository does not yet prove a frozen benchmark suite, equal-spec language
+packs, real comparison tasks, frozen toolchains, a sandbox for model output,
+live-model execution, any AI-first superiority result, the Rust bootstrap,
+strings, modules, external capability enforcement, standard library, Windows
+parity, broad ABI stability, networking, concurrency, GPU execution, LSP,
+package ecosystem, self-hosting, or universal systems-language completeness.
 
-User-visible raw pointers and general-purpose `unsafe` remain explicitly
-post-v1 because they do not unlock the first product domain.
-
-## Governing semantics and process
-
-- `CORE_SEMANTICS.md`
-- `ARITHMETIC_SEMANTICS.md`
-- `AGGREGATE_SEMANTICS.md`
-- `MUTATION_SEMANTICS.md`
-- `REFERENCE_SEMANTICS.md`
-- `contracts/project.json`
-- `contracts/project.schema.json`
-- `MVP_ROADMAP.md`
-- `AI_FIRST_MVP_CONTRACT.md`
-- `AXIOM_BENCH_SPEC.md`
-- `AXIOM_BENCH_PREREGISTRATION.md`
-- `V1_TRACKING.md`
-- `ROADMAP_AMENDMENT_007.md`
-- `AGENTS.md`
-- `PROOF_STATUS.md`
-- `CONTEXT7_SOURCE_EVIDENCE.md`
-- `CONTEXT7_MVP_DESIGN_EVIDENCE.md`
-- `M0_CONTRACT_SOURCE_EVIDENCE.md`
-- `M1_BENCHMARK_SOURCE_EVIDENCE.md`
-
-## Current proof boundary
-
-This is an executable semantics oracle with an implemented benchmark contract,
-not a frozen AXIOM-Bench suite and not AXIOM v1.0. It does not yet prove:
-
-- the AXIOM-Bench runner, language packs, task corpus, toolchain parity,
-  conformance bundles, replay, live-model execution, or M1 completion;
-- the Rust bootstrap compiler;
-- algebraic variants, `Option`, or `Result`;
-- broad scalar and conversion semantics;
-- generics;
-- owned heap values or deterministic resource destruction;
-- slices, bytes, or UTF-8 strings;
-- modules, manifests, or lockfiles;
-- local I/O capability enforcement;
-- the v1 standard library or JSON support;
-- Windows target parity;
-- the external AI-first benchmark claim;
-- raw pointers, `unsafe`, reborrowing, non-lexical lifetimes, or reference returns/fields;
-- broad platform ABI stability;
-- networking, concurrency, GPU execution, LSP, package ecosystem, self-hosting,
-  or universal systems-language completeness.
+See `PROOF_STATUS.md` for the exact executed boundary.

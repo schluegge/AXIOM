@@ -45,12 +45,18 @@ def _require_code(result: dict[str, Any], code: str) -> str:
 def _valid_contract(root: Path) -> dict[str, Any]:
     result = check_project_contract(root)
     require(result["status"] == "passed", f"valid repository contract failed: {result}")
-    require(result["counts"]["current_features"] == 7, "unexpected current feature count")
+    require(result["counts"]["current_features"] == 8, "unexpected current feature count")
     require(result["counts"]["findings"] == 0, "valid contract contains findings")
+    features = {item["id"]: item for item in _load(root / "contracts" / "project.json")["features"]}
+    trusted = features.get("benchmark.trusted-conformance-0.1")
+    require(trusted is not None, "trusted conformance capability is missing")
+    require(trusted["status"] == "implemented", "trusted conformance status is overstated")
+    require(trusted["proven_targets"] == [], "trusted conformance claims a language target")
     return {
         "features": result["counts"]["current_features"],
         "deferred": result["counts"]["deferred_features"],
         "validator": result["validator"],
+        "trusted_conformance_status": trusted["status"],
     }
 
 
