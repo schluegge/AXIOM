@@ -1,0 +1,222 @@
+{
+  "$schema": "./project.schema.json",
+  "document_kind": "axiom.project-contract",
+  "schema_version": "1.0.0",
+  "project": {
+    "name": "AXIOM",
+    "repository": "schluegge/AXIOM",
+    "program_issue": 9,
+    "active_milestone": "M0",
+    "roadmap_contract": "roadmap/v1.json"
+  },
+  "language": {
+    "version": "0.7.0",
+    "status": "semantic-oracle",
+    "semantic_authority": "python-llvm-oracle",
+    "profiles": [
+      "script",
+      "system"
+    ]
+  },
+  "authorities": [
+    {"rank": 1, "role": "normative-semantics", "path": "CORE_SEMANTICS.md"},
+    {"rank": 1, "role": "normative-semantics", "path": "ARITHMETIC_SEMANTICS.md"},
+    {"rank": 1, "role": "normative-semantics", "path": "AGGREGATE_SEMANTICS.md"},
+    {"rank": 1, "role": "normative-semantics", "path": "MUTATION_SEMANTICS.md"},
+    {"rank": 1, "role": "normative-semantics", "path": "REFERENCE_SEMANTICS.md"},
+    {"rank": 2, "role": "machine-readable-index", "path": "contracts/project.json"},
+    {"rank": 3, "role": "roadmap", "path": "MVP_ROADMAP.md"},
+    {"rank": 4, "role": "release-contract", "path": "AI_FIRST_MVP_CONTRACT.md"},
+    {"rank": 5, "role": "historical-rationale", "path": "ROADMAP_AMENDMENT_007.md"},
+    {"rank": 6, "role": "summary", "path": "README.md"}
+  ],
+  "proven_targets": [
+    {
+      "triple": "x86_64-unknown-linux-gnu",
+      "scope": "semantic-oracle native differential execution, deterministic aggregate layout, and simple struct-by-value C ABI proof",
+      "evidence_paths": [
+        "PROOF_STATUS.md",
+        "CONTEXT7_SOURCE_EVIDENCE.md",
+        "tests/test_aggregate_layout.py",
+        "run_repo_proof.py"
+      ]
+    }
+  ],
+  "features": [
+    {
+      "id": "core.vertical-pipeline",
+      "status": "proven",
+      "introduced_version": "0.2.0",
+      "summary": "UTF-8 source through parser, canonical AST/formatter, semantic documents, interpreter, LLVM, Clang, and differential execution.",
+      "normative_spec": "CORE_SEMANTICS.md",
+      "implementation_paths": [
+        "axiom_proof/source.py",
+        "axiom_proof/lexer.py",
+        "axiom_proof/parser.py",
+        "axiom_proof/formatter.py",
+        "axiom_proof/driver.py",
+        "axiom_proof/hir.py",
+        "axiom_proof/control_flow.py",
+        "axiom_proof/interpreter.py",
+        "axiom_proof/llvm_backend.py",
+        "runtime/axiom_runtime.c"
+      ],
+      "test_paths": ["tests/test_vertical.py"],
+      "proof_ids": ["repo-proof.core", "agent-b.core"],
+      "benchmark_ids": [],
+      "diagnostic_owners": [
+        "AX-CALL-*",
+        "AX-FUNC-*",
+        "AX-IMPORT-*",
+        "AX-LEX-*",
+        "AX-NAME-*",
+        "AX-PARSE-*",
+        "AX-PROFILE-*",
+        "AX-RETURN-*",
+        "AX-RUNTIME-*",
+        "AX-TYPE-*"
+      ],
+      "proven_targets": ["x86_64-unknown-linux-gnu"]
+    },
+    {
+      "id": "language.mutable-control-flow",
+      "status": "proven",
+      "introduced_version": "0.3.0",
+      "summary": "Explicit mutable locals, assignments, lexical scopes, conditionals, and while loops.",
+      "normative_spec": "CORE_SEMANTICS.md",
+      "implementation_paths": [
+        "axiom_proof/semantic_blocks.py",
+        "axiom_proof/semantic_statements.py",
+        "axiom_proof/interpreter.py",
+        "axiom_proof/llvm_backend.py"
+      ],
+      "test_paths": ["tests/test_vertical.py"],
+      "proof_ids": ["repo-proof.control-flow", "agent-b.core"],
+      "benchmark_ids": [],
+      "diagnostic_owners": ["AX-MUT-*"],
+      "proven_targets": ["x86_64-unknown-linux-gnu"]
+    },
+    {
+      "id": "arithmetic.checked-i32",
+      "status": "proven",
+      "introduced_version": "0.4.0",
+      "summary": "Checked signed i32 arithmetic with explicit overflow, zero-division, and signed-division boundary behavior.",
+      "normative_spec": "ARITHMETIC_SEMANTICS.md",
+      "implementation_paths": [
+        "axiom_proof/arithmetic.py",
+        "axiom_proof/runtime_faults.py",
+        "axiom_proof/interpreter.py",
+        "axiom_proof/llvm_backend.py",
+        "runtime/axiom_runtime.c"
+      ],
+      "test_paths": ["tests/test_vertical.py"],
+      "proof_ids": ["repo-proof.checked-arithmetic", "agent-b.arithmetic"],
+      "benchmark_ids": [],
+      "diagnostic_owners": ["AX-INT-*"],
+      "proven_targets": ["x86_64-unknown-linux-gnu"]
+    },
+    {
+      "id": "data.aggregates-fixed-arrays",
+      "status": "proven",
+      "introduced_version": "0.5.0",
+      "summary": "Structs, fixed arrays, nested aggregate values, checked indexing, deterministic layout, and simple C ABI interoperation.",
+      "normative_spec": "AGGREGATE_SEMANTICS.md",
+      "implementation_paths": [
+        "axiom_proof/type_system.py",
+        "axiom_proof/layout.py",
+        "axiom_proof/semantic.py",
+        "axiom_proof/interpreter.py",
+        "axiom_proof/llvm_backend.py",
+        "runtime/axiom_runtime.c"
+      ],
+      "test_paths": [
+        "tests/test_aggregate_diagnostics.py",
+        "tests/test_aggregate_execution.py",
+        "tests/test_aggregate_layout.py"
+      ],
+      "proof_ids": ["repo-proof.aggregates", "repo-proof.layout", "agent-b.aggregates"],
+      "benchmark_ids": [],
+      "diagnostic_owners": ["AX-ARRAY-*", "AX-INDEX-*", "AX-STRUCT-*"],
+      "proven_targets": ["x86_64-unknown-linux-gnu"]
+    },
+    {
+      "id": "mutation.structured-lvalues",
+      "status": "proven",
+      "introduced_version": "0.6.0",
+      "summary": "Whole-value, field, fixed-array element, and nested structured assignment with deterministic evaluation order.",
+      "normative_spec": "MUTATION_SEMANTICS.md",
+      "implementation_paths": [
+        "axiom_proof/semantic_lvalues.py",
+        "axiom_proof/interpreter.py",
+        "axiom_proof/llvm_lvalues.py"
+      ],
+      "test_paths": ["tests/test_lvalue_mutation.py"],
+      "proof_ids": ["repo-proof.structured-lvalues", "agent-b.lvalues"],
+      "benchmark_ids": [],
+      "diagnostic_owners": [],
+      "proven_targets": ["x86_64-unknown-linux-gnu"]
+    },
+    {
+      "id": "memory.scoped-references",
+      "status": "proven",
+      "introduced_version": "0.7.0",
+      "summary": "Non-null scoped shared and mutable references with conservative lexical whole-root borrow checking.",
+      "normative_spec": "REFERENCE_SEMANTICS.md",
+      "implementation_paths": [
+        "axiom_proof/semantic_borrows.py",
+        "axiom_proof/semantic_lvalues.py",
+        "axiom_proof/interpreter.py",
+        "axiom_proof/llvm_reference_expressions.py"
+      ],
+      "test_paths": ["tests/test_references.py"],
+      "proof_ids": ["repo-proof.scoped-references", "agent-b.references"],
+      "benchmark_ids": [],
+      "diagnostic_owners": ["AX-BORROW-*", "AX-REF-*"],
+      "proven_targets": ["x86_64-unknown-linux-gnu"]
+    }
+  ],
+  "deferred_features": [
+    {"id": "compiler.rust-bootstrap", "reason": "Scheduled after the M1 benchmark seed so the production compiler starts from a frozen measured baseline.", "target_milestone": "M2"},
+    {"id": "protocol.stable-cli-json", "reason": "The current CLI is not yet the complete stable compiler interaction protocol.", "target_milestone": "M3"},
+    {"id": "types.scalar-completeness", "reason": "u8, usize, i64, u64, f64, and explicit conversion semantics are not proven.", "target_milestone": "M4"},
+    {"id": "types.algebraic-failure", "reason": "Enums, exhaustive match, Option, Result, and try are not implemented.", "target_milestone": "M5"},
+    {"id": "types.minimal-generics", "reason": "Monomorphized generic declarations and functions are not implemented.", "target_milestone": "M6"},
+    {"id": "memory.ownership-destruction", "reason": "Move semantics, owned resources, and deterministic destruction are not implemented.", "target_milestone": "M7"},
+    {"id": "data.dynamic-text", "reason": "Owned bytes, slices, UTF-8 strings, lists, and builders are not implemented.", "target_milestone": "M8"},
+    {"id": "projects.modules-manifest", "reason": "Modules, visibility, manifest, lockfile, and reproducible project graphs are not implemented.", "target_milestone": "M9"},
+    {"id": "effects.external-capabilities", "reason": "Filesystem, environment, output, and process authority are not capability-enforced.", "target_milestone": "M10"},
+    {"id": "stdlib.cli-data-json", "reason": "The v1 standard library and deterministic JSON implementation are not delivered.", "target_milestone": "M11"},
+    {"id": "target.windows-x86_64-msvc", "reason": "Windows release parity is required for v1 but is not proven by v0.7.", "target_milestone": "M12"},
+    {"id": "benchmark.ai-first-holdout", "reason": "The external frozen holdout has not run; no AI-first superiority claim is proven.", "target_milestone": "M13"},
+    {"id": "memory.raw-pointers-unsafe", "reason": "Issue #8 is explicitly post-v1 and cannot be represented as implemented in the v1 safe core.", "target_milestone": "post-v1"},
+    {"id": "domains.network-concurrency-gpu-kernel", "reason": "These domains are outside the focused v1 CLI/data product boundary.", "target_milestone": "post-v1"}
+  ],
+  "claim_documents": [
+    {
+      "path": "README.md",
+      "start_marker": "<!-- AXIOM-PROJECT-CONTRACT:FEATURES:BEGIN -->",
+      "end_marker": "<!-- AXIOM-PROJECT-CONTRACT:FEATURES:END -->",
+      "feature_ids": [
+        "core.vertical-pipeline",
+        "language.mutable-control-flow",
+        "arithmetic.checked-i32",
+        "data.aggregates-fixed-arrays",
+        "mutation.structured-lvalues",
+        "memory.scoped-references"
+      ]
+    },
+    {
+      "path": "PROOF_STATUS.md",
+      "start_marker": "<!-- AXIOM-PROJECT-CONTRACT:FEATURES:BEGIN -->",
+      "end_marker": "<!-- AXIOM-PROJECT-CONTRACT:FEATURES:END -->",
+      "feature_ids": [
+        "core.vertical-pipeline",
+        "language.mutable-control-flow",
+        "arithmetic.checked-i32",
+        "data.aggregates-fixed-arrays",
+        "mutation.structured-lvalues",
+        "memory.scoped-references"
+      ]
+    }
+  ]
+}
