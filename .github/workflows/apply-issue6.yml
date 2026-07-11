@@ -22,11 +22,11 @@ jobs:
       - name: Apply exact tested patch
         shell: bash
         run: |
-          cat tools/issue6.patch.part* > /tmp/issue6.patch
+          cat tools/issue6.chunk* > /tmp/issue6.patch
           printf '%s  %s\n' '8575e8f141972e3eac4a04164625674254a0373f76703401e4dcbab54760fc64' /tmp/issue6.patch | sha256sum --check
           git apply --index /tmp/issue6.patch
           git checkout origin/main -- .github/workflows/proof.yml
-          rm -f tools/issue6.patch.part* tools/issue6.ready .github/workflows/apply-issue6.yml
+          rm -f tools/issue6.chunk* tools/issue6.patch.part* tools/issue6.ready .github/workflows/apply-issue6.yml
           printf '%s\n' 'issue6-patch-applied' > .issue6-applied
           git add -A
           git config user.name 'AXIOM automation'
