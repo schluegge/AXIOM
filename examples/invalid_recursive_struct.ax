@@ -1,0 +1,9 @@
+profile system;
+
+struct Node {
+    child: Node,
+}
+
+fn main() -> i32 {
+    return 0;
+}

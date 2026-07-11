@@ -1,20 +1,22 @@
-# Review-Agent Status
+# Review-role status — v0.5.0
 
-## Agent A
+A true second language-model instance is not available in this environment.
+The project therefore preserves two explicit roles:
 
-Role: implementer  
-Result: **PASSED**  
-Executed tests: 22
+- Agent A: implementation and normal tests
+- Agent B: separate deterministic adversarial process with its own output,
+  release-blocking exit code, and no authority to weaken a failing assertion
+  merely to obtain green status
 
-## Agent B
+Current result:
 
-Role: separate deterministic adversarial reviewer  
-Result: **PASSED**  
-Executed checks: 23
+```text
+Agent A unit/integration suite  31/31 passed
+Agent B adversarial review      33/33 passed
+Generated aggregate matrix      12/12 passed
+```
 
-## Boundary
-
-Agent B is not represented as a second language-model instance. The available
-environment provides one assistant model. Independence is approximated through
-a separate process, a review-only charter, fresh temporary directories, and a
-release-blocking exit code.
+Agent B independently covers aggregate AST shape, invalid programs, dynamic
+bounds, LLVM structure, per-function alloca placement, deterministic outputs,
+LLVM/C layout agreement, C ABI round trip, and all earlier arithmetic/control
+flow regressions.

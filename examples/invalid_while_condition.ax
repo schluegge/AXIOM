@@ -1,0 +1,7 @@
+fn main() -> i32 {
+    var value: i32 = 0;
+    while 1 {
+        value = value + 1;
+    }
+    return value;
+}

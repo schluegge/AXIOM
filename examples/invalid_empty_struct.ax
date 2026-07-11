@@ -1,0 +1,8 @@
+profile system;
+
+struct Empty {
+}
+
+fn main() -> i32 {
+    return 0;
+}

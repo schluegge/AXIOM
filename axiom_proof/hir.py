@@ -18,6 +18,21 @@ def lower_expr(node: Node, types: dict[str, str]) -> dict[str, Any]:
     elif node.kind == "CallExpr":
         result["callee"] = node.fields["callee"]
         result["arguments"] = [lower_expr(arg, types) for arg in node.fields["arguments"]]
+    elif node.kind == "StructLiteral":
+        result["type_name"] = node.fields["type_name"]
+        result["fields"] = [
+            {"name": field.fields["name"], "value": lower_expr(field.fields["value"], types)}
+            for field in node.fields["fields"]
+        ]
+    elif node.kind == "ArrayLiteral":
+        result["elements"] = [lower_expr(item, types) for item in node.fields["elements"]]
+    elif node.kind == "FieldExpr":
+        result["base"] = lower_expr(node.fields["base"], types)
+        result["field"] = node.fields["field"]
+    elif node.kind == "IndexExpr":
+        result["base"] = lower_expr(node.fields["base"], types)
+        result["index"] = lower_expr(node.fields["index"], types)
+        result["bounds_check"] = node.fields["index"].kind != "IntegerLiteral"
     elif node.kind == "BinaryExpr":
         result["operator"] = node.fields["operator"]
         result["left"] = lower_expr(node.fields["left"], types)
@@ -65,6 +80,17 @@ def lower_statement(node: Node, types: dict[str, str]) -> dict[str, Any]:
 
 
 def lower_program(program: Node, types: dict[str, str]) -> dict[str, Any]:
+    structs = [
+        {
+            "name": declaration.fields["name"],
+            "node_id": declaration.node_id,
+            "fields": [
+                {"name": field.fields["name"], "type": field.fields["type_name"]}
+                for field in declaration.fields["fields"]
+            ],
+        }
+        for declaration in program.fields.get("structs", [])
+    ]
     functions = []
     for function in program.fields["functions"]:
         functions.append(
@@ -82,4 +108,9 @@ def lower_program(program: Node, types: dict[str, str]) -> dict[str, Any]:
                 ],
             }
         )
-    return {"document_kind": "axiom.hir", "schema_version": "0.4.0", "functions": functions}
+    return {
+        "document_kind": "axiom.hir",
+        "schema_version": "0.5.0",
+        "structs": structs,
+        "functions": functions,
+    }

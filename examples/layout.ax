@@ -1,0 +1,23 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+struct Mixed {
+    flag: bool,
+    count: i32,
+    pair: Pair,
+    values: [i32; 3],
+}
+
+fn main() -> i32 {
+    let value: Mixed = Mixed {
+        flag: true,
+        count: 7,
+        pair: Pair { left: 11, right: 13 },
+        values: [17, 19, 23],
+    };
+    return value.count + value.pair.right + value.values[1];
+}

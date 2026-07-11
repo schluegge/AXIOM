@@ -4,32 +4,29 @@ from dataclasses import dataclass
 from typing import Any
 
 from .arithmetic import I32_MAX, I32_MIN
+from .layout import LayoutEngine
 from .model import Diagnostic, Node
-
-SUPPORTED_TYPES = {"i32", "bool"}
-
-
-@dataclass(frozen=True)
-class FunctionSignature:
-    name: str
-    parameter_types: tuple[str, ...]
-    return_type: str
-    node_id: str
+from .type_system import (
+    PRIMITIVE_TYPES,
+    StructDefinition,
+    StructField,
+    TypeRegistry,
+    parse_array_type,
+)
 
 
-@dataclass(frozen=True)
-class LocalBinding:
-    name: str
-    type_name: str
-    mutable: bool
-    node_id: str
-    kind: str
+from .semantic_model import FunctionSignature, LocalBinding
+from .semantic_blocks import SemanticBlockMixin
+from .semantic_statements import SemanticStatementMixin
+from .semantic_expressions import SemanticExpressionMixin
+from .semantic_documents import SemanticDocumentMixin
 
 
-class SemanticAnalyzer:
+class SemanticAnalyzer(SemanticBlockMixin, SemanticStatementMixin, SemanticExpressionMixin, SemanticDocumentMixin):
     def __init__(self, program: Node):
         self.program = program
         self.diagnostics: list[Diagnostic] = []
+        self.registry = TypeRegistry()
         self.functions: dict[str, FunctionSignature] = {}
         self.node_types: dict[str, str] = {}
         self.references: list[dict[str, Any]] = []
@@ -37,12 +34,79 @@ class SemanticAnalyzer:
         self.function_facts: dict[str, dict[str, Any]] = {}
 
     def analyze(self) -> None:
+        self.collect_structs()
         self.collect_functions()
         for function in self.program.fields["functions"]:
             self.analyze_function(function)
 
     def error(self, code: str, message: str, node: Node, stage: str) -> None:
         self.diagnostics.append(Diagnostic(code, "error", message, node.span, stage))
+
+    def collect_structs(self) -> None:
+        declarations_by_name: dict[str, Node] = {}
+        for declaration in self.program.fields.get("structs", []):
+            name = declaration.fields["name"]
+            if name in self.registry.structs:
+                self.error("AX-STRUCT-0001", f"duplicate struct: {name}", declaration, "resolver")
+                continue
+            seen_fields: set[str] = set()
+            fields: list[StructField] = []
+            for field in declaration.fields["fields"]:
+                field_name = field.fields["name"]
+                if field_name in seen_fields:
+                    self.error(
+                        "AX-STRUCT-0002",
+                        f"duplicate field {field_name} in struct {name}",
+                        field,
+                        "resolver",
+                    )
+                    continue
+                seen_fields.add(field_name)
+                fields.append(StructField(field_name, field.fields["type_name"], field.node_id))
+            if not fields:
+                self.error(
+                    "AX-STRUCT-0010",
+                    f"empty struct {name} is outside the C-compatible layout subset",
+                    declaration,
+                    "type_checker",
+                )
+            self.registry.structs[name] = StructDefinition(name, tuple(fields), declaration.node_id)
+            declarations_by_name[name] = declaration
+
+        for declaration in self.program.fields.get("structs", []):
+            name = declaration.fields["name"]
+            if declarations_by_name.get(name) is not declaration:
+                continue
+            for field in declaration.fields["fields"]:
+                type_name = field.fields["type_name"]
+                array = parse_array_type(type_name)
+                if array is not None and array[1] <= 0:
+                    self.error(
+                        "AX-ARRAY-0004",
+                        "fixed array length must be greater than zero",
+                        field,
+                        "type_checker",
+                    )
+                elif not self.registry.is_known(type_name):
+                    self.error(
+                        "AX-TYPE-0013",
+                        f"unknown field type {type_name} in struct {name}",
+                        field,
+                        "type_checker",
+                    )
+
+        for cycle in self.registry.validate_acyclic():
+            owner = declarations_by_name.get(cycle[0])
+            if owner is not None:
+                self.error(
+                    "AX-TYPE-0014",
+                    f"recursive value type is not allowed: {' -> '.join(cycle)}",
+                    owner,
+                    "type_checker",
+                )
+
+    def type_is_supported(self, type_name: str) -> bool:
+        return self.registry.is_known(type_name)
 
     def collect_functions(self) -> None:
         for function in self.program.fields["functions"]:
@@ -53,8 +117,8 @@ class SemanticAnalyzer:
             parameter_types = tuple(parameter.fields["type_name"] for parameter in function.fields["parameters"])
             return_type = function.fields["return_type"]
             for type_name in (*parameter_types, return_type):
-                if type_name not in SUPPORTED_TYPES:
-                    self.error("AX-TYPE-0004", f"unsupported type in vertical proof: {type_name}", function, "type_checker")
+                if not self.type_is_supported(type_name):
+                    self.error("AX-TYPE-0004", f"unsupported type: {type_name}", function, "type_checker")
             self.functions[name] = FunctionSignature(name, parameter_types, return_type, function.node_id)
             self.call_graph[name] = []
             self.function_facts[name] = {
@@ -62,7 +126,11 @@ class SemanticAnalyzer:
                 "assignments": 0,
                 "while_loops": 0,
                 "checked_arithmetic_sites": 0,
+                "bounds_check_sites": 0,
                 "panic_sites": 0,
+                "aggregate_literals": 0,
+                "field_accesses": 0,
+                "index_accesses": 0,
             }
 
     def resolve_local(self, scopes: list[dict[str, LocalBinding]], name: str) -> LocalBinding | None:
@@ -78,306 +146,3 @@ class SemanticAnalyzer:
             return
         scopes[-1][binding.name] = binding
 
-    def analyze_function(self, function: Node) -> None:
-        parameter_scope: dict[str, LocalBinding] = {}
-        for parameter in function.fields["parameters"]:
-            name = parameter.fields["name"]
-            if name in parameter_scope:
-                self.error("AX-NAME-0003", f"duplicate parameter: {name}", parameter, "resolver")
-                continue
-            parameter_scope[name] = LocalBinding(
-                name=name,
-                type_name=parameter.fields["type_name"],
-                mutable=False,
-                node_id=parameter.node_id,
-                kind="parameter",
-            )
-        scopes = [parameter_scope]
-        self.analyze_block(
-            function.fields["body"],
-            scopes,
-            function.fields["return_type"],
-            function.fields["name"],
-            create_scope=False,
-        )
-
-    def analyze_block(
-        self,
-        block: Node,
-        scopes: list[dict[str, LocalBinding]],
-        return_type: str,
-        function_name: str,
-        *,
-        create_scope: bool,
-    ) -> None:
-        if create_scope:
-            scopes.append({})
-        try:
-            for statement in block.fields["statements"]:
-                if statement.kind in {"LetStmt", "VarStmt"}:
-                    declared = statement.fields["type_name"]
-                    actual = self.type_expr(statement.fields["value"], scopes, function_name)
-                    if declared not in SUPPORTED_TYPES:
-                        self.error("AX-TYPE-0004", f"unsupported binding type: {declared}", statement, "type_checker")
-                    elif actual != "error" and declared != actual:
-                        self.error(
-                            "AX-TYPE-0001",
-                            f"binding type mismatch: expected {declared}, found {actual}",
-                            statement,
-                            "type_checker",
-                        )
-                    mutable = statement.kind == "VarStmt"
-                    self.declare_local(
-                        scopes,
-                        LocalBinding(
-                            name=statement.fields["name"],
-                            type_name=declared,
-                            mutable=mutable,
-                            node_id=statement.node_id,
-                            kind="var" if mutable else "let",
-                        ),
-                        statement,
-                    )
-                    if mutable:
-                        self.function_facts[function_name]["mutable_bindings"] += 1
-                elif statement.kind == "AssignmentStmt":
-                    target_name = statement.fields["target"]
-                    binding = self.resolve_local(scopes, target_name)
-                    actual = self.type_expr(statement.fields["value"], scopes, function_name)
-                    if binding is None:
-                        self.error("AX-NAME-0001", f"unresolved assignment target: {target_name}", statement, "resolver")
-                    else:
-                        self.references.append(
-                            {
-                                "node_id": statement.node_id,
-                                "name": target_name,
-                                "kind": "assignment",
-                                "target_node_id": binding.node_id,
-                            }
-                        )
-                        if not binding.mutable:
-                            self.error(
-                                "AX-MUT-0001",
-                                f"cannot assign to immutable binding: {target_name}",
-                                statement,
-                                "type_checker",
-                            )
-                        if actual != "error" and actual != binding.type_name:
-                            self.error(
-                                "AX-TYPE-0011",
-                                f"assignment type mismatch: expected {binding.type_name}, found {actual}",
-                                statement,
-                                "type_checker",
-                            )
-                    self.function_facts[function_name]["assignments"] += 1
-                elif statement.kind == "ReturnStmt":
-                    actual = self.type_expr(statement.fields["value"], scopes, function_name)
-                    if actual != "error" and actual != return_type:
-                        self.error(
-                            "AX-TYPE-0002",
-                            f"return type mismatch: expected {return_type}, found {actual}",
-                            statement,
-                            "type_checker",
-                        )
-                elif statement.kind == "IfStmt":
-                    condition = self.type_expr(statement.fields["condition"], scopes, function_name)
-                    if condition != "error" and condition != "bool":
-                        self.error(
-                            "AX-TYPE-0003",
-                            f"if condition must be bool, found {condition}",
-                            statement.fields["condition"],
-                            "type_checker",
-                        )
-                    self.analyze_block(
-                        statement.fields["then_block"],
-                        scopes,
-                        return_type,
-                        function_name,
-                        create_scope=True,
-                    )
-                    else_block = statement.fields.get("else_block")
-                    if isinstance(else_block, Node):
-                        self.analyze_block(
-                            else_block,
-                            scopes,
-                            return_type,
-                            function_name,
-                            create_scope=True,
-                        )
-                elif statement.kind == "WhileStmt":
-                    condition = self.type_expr(statement.fields["condition"], scopes, function_name)
-                    if condition != "error" and condition != "bool":
-                        self.error(
-                            "AX-TYPE-0012",
-                            f"while condition must be bool, found {condition}",
-                            statement.fields["condition"],
-                            "type_checker",
-                        )
-                    self.function_facts[function_name]["while_loops"] += 1
-                    self.analyze_block(
-                        statement.fields["body"],
-                        scopes,
-                        return_type,
-                        function_name,
-                        create_scope=True,
-                    )
-                elif statement.kind == "ExprStmt":
-                    self.type_expr(statement.fields["expression"], scopes, function_name)
-        finally:
-            if create_scope:
-                scopes.pop()
-
-    def type_expr(self, expression: Node, scopes: list[dict[str, LocalBinding]], function_name: str) -> str:
-        if expression.kind == "IntegerLiteral":
-            value = expression.fields["value"]
-            if not I32_MIN <= value <= I32_MAX:
-                self.error(
-                    "AX-INT-0001",
-                    f"integer literal is outside i32 range: {value}",
-                    expression,
-                    "type_checker",
-                )
-                result = "error"
-            else:
-                result = "i32"
-        elif expression.kind == "BoolLiteral":
-            result = "bool"
-        elif expression.kind == "NameExpr":
-            name = expression.fields["name"]
-            binding = self.resolve_local(scopes, name)
-            if binding is None:
-                self.error("AX-NAME-0001", f"unresolved name: {name}", expression, "resolver")
-                result = "error"
-            else:
-                result = binding.type_name
-                self.references.append(
-                    {
-                        "node_id": expression.node_id,
-                        "name": name,
-                        "kind": "local",
-                        "target_node_id": binding.node_id,
-                    }
-                )
-        elif expression.kind == "CallExpr":
-            callee = expression.fields["callee"]
-            signature = self.functions.get(callee)
-            if signature is None:
-                self.error("AX-NAME-0001", f"unresolved function: {callee}", expression, "resolver")
-                for argument in expression.fields["arguments"]:
-                    self.type_expr(argument, scopes, function_name)
-                result = "error"
-            else:
-                arguments = expression.fields["arguments"]
-                if len(arguments) != len(signature.parameter_types):
-                    self.error("AX-TYPE-0005", f"argument count mismatch for {callee}", expression, "type_checker")
-                for index, argument in enumerate(arguments):
-                    actual = self.type_expr(argument, scopes, function_name)
-                    if index < len(signature.parameter_types):
-                        expected = signature.parameter_types[index]
-                        if actual != "error" and actual != expected:
-                            self.error(
-                                "AX-TYPE-0006",
-                                f"argument {index + 1} of {callee}: expected {expected}, found {actual}",
-                                argument,
-                                "type_checker",
-                            )
-                self.call_graph.setdefault(function_name, []).append(callee)
-                self.references.append(
-                    {
-                        "node_id": expression.node_id,
-                        "name": callee,
-                        "kind": "function",
-                        "target_node_id": signature.node_id,
-                    }
-                )
-                result = signature.return_type
-        elif expression.kind == "BinaryExpr":
-            left = self.type_expr(expression.fields["left"], scopes, function_name)
-            right = self.type_expr(expression.fields["right"], scopes, function_name)
-            operator = expression.fields["operator"]
-            if left == "error" or right == "error":
-                result = "error"
-            elif operator in {"+", "-", "*", "/", "%"}:
-                if left != "i32" or right != "i32":
-                    self.error("AX-TYPE-0007", f"operator {operator} requires i32 operands", expression, "type_checker")
-                    result = "error"
-                else:
-                    result = "i32"
-                    self.function_facts[function_name]["checked_arithmetic_sites"] += 1
-                    self.function_facts[function_name]["panic_sites"] += 1
-            elif operator in {"<", "<=", ">", ">=", "==", "!="}:
-                if left != right:
-                    self.error(
-                        "AX-TYPE-0008",
-                        f"comparison operands differ: {left} and {right}",
-                        expression,
-                        "type_checker",
-                    )
-                    result = "error"
-                else:
-                    result = "bool"
-            else:
-                self.error("AX-TYPE-0009", f"unsupported operator: {operator}", expression, "type_checker")
-                result = "error"
-        else:
-            self.error("AX-TYPE-0010", f"unsupported expression node: {expression.kind}", expression, "type_checker")
-            result = "error"
-        self.node_types[expression.node_id] = result
-        return result
-
-    def symbol_document(self) -> dict[str, Any]:
-        return {
-            "document_kind": "axiom.symbols",
-            "schema_version": "0.4.0",
-            "functions": [
-                {
-                    "name": signature.name,
-                    "node_id": signature.node_id,
-                    "parameter_types": list(signature.parameter_types),
-                    "return_type": signature.return_type,
-                }
-                for signature in sorted(self.functions.values(), key=lambda item: item.name)
-            ],
-            "references": sorted(self.references, key=lambda item: (item["node_id"], item["name"], item["kind"])),
-            "call_graph": {name: sorted(set(calls)) for name, calls in sorted(self.call_graph.items())},
-        }
-
-    def type_document(self) -> dict[str, Any]:
-        return {
-            "document_kind": "axiom.types",
-            "schema_version": "0.4.0",
-            "node_types": dict(sorted(self.node_types.items())),
-        }
-
-    def effect_document(self) -> dict[str, Any]:
-        return {
-            "document_kind": "axiom.effects",
-            "schema_version": "0.4.0",
-            "functions": [
-                {
-                    "name": name,
-                    "effects": (["panic"] if self.function_facts[name]["panic_sites"] else []),
-                    "local_facts": self.function_facts[name],
-                    "proof": (
-                        "checked_i32_arithmetic_may_panic"
-                        if self.function_facts[name]["panic_sites"]
-                        else "no_external_effects_in_reference_subset"
-                    ),
-                }
-                for name in sorted(self.functions)
-            ],
-        }
-
-    def ownership_document(self) -> dict[str, Any]:
-        mutable_bindings = sum(facts["mutable_bindings"] for facts in self.function_facts.values())
-        assignments = sum(facts["assignments"] for facts in self.function_facts.values())
-        return {
-            "document_kind": "axiom.ownership",
-            "schema_version": "0.4.0",
-            "mode": "copy_scalar_with_explicit_local_mutation",
-            "borrows": [],
-            "moves": [],
-            "mutable_bindings": mutable_bindings,
-            "assignments": assignments,
-            "proof": "no_owned_resource_types_exist_in_reference_subset",
-        }

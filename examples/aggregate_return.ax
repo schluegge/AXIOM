@@ -1,0 +1,15 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+fn make_pair(left: i32, right: i32) -> Pair {
+    return Pair { left: left, right: right };
+}
+
+fn main() -> i32 {
+    let pair: Pair = make_pair(19, 23);
+    return pair.left + pair.right;
+}

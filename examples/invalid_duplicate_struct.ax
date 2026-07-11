@@ -1,0 +1,13 @@
+profile system;
+
+struct Pair {
+    left: i32,
+}
+
+struct Pair {
+    right: i32,
+}
+
+fn main() -> i32 {
+    return 0;
+}

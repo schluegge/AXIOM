@@ -1,0 +1,15 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+fn main() -> i32 {
+    let pairs: [Pair; 2] = [
+        Pair { left: 1, right: 2 },
+        Pair { left: 20, right: 22 },
+    ];
+    let index: i32 = 1;
+    return pairs[index].left + pairs[1].right;
+}
