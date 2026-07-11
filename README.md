@@ -10,10 +10,11 @@ The focused v1 product target is:
 safe deterministic local CLI and structured-data tools
 ```
 
-Canonical state and sequence are defined by `contracts/project.json`,
-`MVP_ROADMAP.md`, `AI_FIRST_MVP_CONTRACT.md`, `roadmap/v1.json`, issue #9, and
-release gate #25. Normative semantic specifications remain authoritative over
-summaries and indexes.
+Normative semantic specifications are the primary authority for language
+meaning. `contracts/project.json` is the validated current-state index;
+`MVP_ROADMAP.md`, `roadmap/v1.json`, and issue #9 govern implementation
+sequence; `AI_FIRST_MVP_CONTRACT.md` and release gate #25 govern measurable
+product claims.
 
 ## Current compiler path
 
@@ -55,6 +56,12 @@ timeouts plus output, feedback, invocation, candidate-byte, file, and
 changed-line limits. Local model-generated candidates remain blocked pending an
 approved isolated backend.
 
+Canonical command records and stdout/stderr payloads replace temporary workspace
+and task-root paths with stable placeholders. Raw Evidence retains the original
+bytes outside the canonical bundle. Replay bounds actual decompressed ZIP bytes,
+not only archive metadata, and converts malformed or memory-exhausting input
+into a failed report.
+
 Replay verifies candidate bytes against retained attempt hashes and derives
 phase outcomes and failure reasons from command records, stream sizes, limits,
 and trace terminal events instead of trusting stored outcome flags. The
@@ -84,7 +91,7 @@ The canonical command creates:
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
 
-The current proof target includes 103 unit/integration tests, 73 separate Agent
+The current proof target includes 109 unit/integration tests, 73 separate Agent
 B checks, trusted conformance and replay bundles, 38 interpreter/native cases,
 52 invalid fixtures, and deterministic Evidence.
 
