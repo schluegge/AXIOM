@@ -127,6 +127,7 @@
       "required": [
         "language",
         "language_pack_id",
+        "candidate_path",
         "starter_path",
         "reference_solution_path",
         "seeded_wrong_paths",
@@ -142,6 +143,7 @@
       "properties": {
         "language": {"enum": ["axiom", "rust", "zig", "go"]},
         "language_pack_id": {"type": "string", "minLength": 1},
+        "candidate_path": {"$ref": "#/$defs/path"},
         "starter_path": {"$ref": "#/$defs/path"},
         "reference_solution_path": {"$ref": "#/$defs/path"},
         "seeded_wrong_paths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
