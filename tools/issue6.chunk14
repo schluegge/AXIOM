@@ -1,0 +1,269 @@
++fn main() -> i32 {
++    var value: i32 = 20;
++    let reference: &mut i32 = &mut value;
++    return combine(reference, bump(reference));
++}
+diff --git a/examples/invalid_ref_nonborrow_initializer.ax b/examples/invalid_ref_nonborrow_initializer.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..ccd417fe9a1a024fd1f6cff511e87a8508deb788
+--- /dev/null
++++ b/examples/invalid_ref_nonborrow_initializer.ax
+@@ -0,0 +1,8 @@
++profile system;
++fn read(value: &i32) -> i32 { return *value; }
++fn main() -> i32 {
++    var value: i32 = 1;
++    let first: &i32 = &value;
++    let second: &i32 = first;
++    return read(second);
++}
+diff --git a/examples/invalid_ref_read_during_mut.ax b/examples/invalid_ref_read_during_mut.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..5b6bb23c68b0359d299846dfde6d2736670db566
+--- /dev/null
++++ b/examples/invalid_ref_read_during_mut.ax
+@@ -0,0 +1,6 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    let reference: &mut i32 = &mut value;
++    return value;
++}
+diff --git a/examples/invalid_ref_reborrow.ax b/examples/invalid_ref_reborrow.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..a9c67f9e701feede6e15c586fe56e525d2811dd2
+--- /dev/null
++++ b/examples/invalid_ref_reborrow.ax
+@@ -0,0 +1,7 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    let first: &mut i32 = &mut value;
++    let second: &mut i32 = &mut *first;
++    return *second;
++}
+diff --git a/examples/invalid_ref_return.ax b/examples/invalid_ref_return.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..21df059769960dd422b2cd54e11f8c819bf70c66
+--- /dev/null
++++ b/examples/invalid_ref_return.ax
+@@ -0,0 +1,8 @@
++profile system;
++fn escape(value: &i32) -> &i32 {
++    return value;
++}
++fn main() -> i32 {
++    var value: i32 = 1;
++    return *escape(&value);
++}
+diff --git a/examples/invalid_ref_shared_during_mut.ax b/examples/invalid_ref_shared_during_mut.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..564b42cc1c4650b655fc0b38b0fb239da78169f3
+--- /dev/null
++++ b/examples/invalid_ref_shared_during_mut.ax
+@@ -0,0 +1,7 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    let exclusive: &mut i32 = &mut value;
++    let shared: &i32 = &value;
++    return *exclusive + *shared;
++}
+diff --git a/examples/invalid_ref_shared_write.ax b/examples/invalid_ref_shared_write.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..980d40baf7aee59cb5a49b957db6e307109b53ec
+--- /dev/null
++++ b/examples/invalid_ref_shared_write.ax
+@@ -0,0 +1,7 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    let reference: &i32 = &value;
++    *reference = 2;
++    return value;
++}
+diff --git a/examples/invalid_ref_temporary.ax b/examples/invalid_ref_temporary.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..39ea399f4ec2951d2619240cd384fcf809ea5f15
+--- /dev/null
++++ b/examples/invalid_ref_temporary.ax
+@@ -0,0 +1,5 @@
++profile system;
++fn read(value: &i32) -> i32 { return *value; }
++fn main() -> i32 {
++    return read(&(1 + 2));
++}
+diff --git a/examples/invalid_ref_two_mut_args.ax b/examples/invalid_ref_two_mut_args.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..4c2fb29fcbdad7d66623799e07d9eb7b654023b0
+--- /dev/null
++++ b/examples/invalid_ref_two_mut_args.ax
+@@ -0,0 +1,8 @@
++profile system;
++fn add(left: &mut i32, right: &mut i32) -> i32 {
++    return *left + *right;
++}
++fn main() -> i32 {
++    var value: i32 = 1;
++    return add(&mut value, &mut value);
++}
+diff --git a/examples/invalid_ref_use_after_loan_in_args.ax b/examples/invalid_ref_use_after_loan_in_args.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..f0c989f166034c7c344a9ca5e01fdc553f382c8b
+--- /dev/null
++++ b/examples/invalid_ref_use_after_loan_in_args.ax
+@@ -0,0 +1,11 @@
++profile system;
++
++fn combine(target: &mut i32, after: i32) -> i32 {
++    return *target + after;
++}
++
++fn main() -> i32 {
++    var value: i32 = 21;
++    let reference: &mut i32 = &mut value;
++    return combine(reference, *reference);
++}
+diff --git a/examples/invalid_ref_var_binding.ax b/examples/invalid_ref_var_binding.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..9ef2968c388a84e7daf8687ce62029880bc388d3
+--- /dev/null
++++ b/examples/invalid_ref_var_binding.ax
+@@ -0,0 +1,6 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    var reference: &i32 = &value;
++    return *reference;
++}
+diff --git a/examples/invalid_ref_write_during_shared.ax b/examples/invalid_ref_write_during_shared.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..29b31553177bacad9e013e07dbd6b998b578284d
+--- /dev/null
++++ b/examples/invalid_ref_write_during_shared.ax
+@@ -0,0 +1,7 @@
++profile system;
++fn main() -> i32 {
++    var value: i32 = 1;
++    let reference: &i32 = &value;
++    value = 2;
++    return *reference;
++}
+diff --git a/examples/ref_argument_order.ax b/examples/ref_argument_order.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..ddcb899ba61eb020443eac3412adac9994274037
+--- /dev/null
++++ b/examples/ref_argument_order.ax
+@@ -0,0 +1,11 @@
++profile system;
++
++fn update(before: i32, target: &mut i32) -> i32 {
++    *target = before + 1;
++    return *target;
++}
++
++fn main() -> i32 {
++    var value: i32 = 41;
++    return update(value, &mut value);
++}
+diff --git a/examples/ref_array_mut.ax b/examples/ref_array_mut.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..e1d8c49ec400b836998bbb7e8b41e196d840f024
+--- /dev/null
++++ b/examples/ref_array_mut.ax
+@@ -0,0 +1,13 @@
++profile system;
++
++fn set(value: &mut i32) -> i32 {
++    *value = 32;
++    return *value;
++}
++
++fn main() -> i32 {
++    var values: [i32; 3] = [5, 6, 7];
++    var index: i32 = 1;
++    set(&mut values[index]);
++    return values[0] + values[1] + values[2];
++}
+diff --git a/examples/ref_dynamic_once.ax b/examples/ref_dynamic_once.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..1a265a661aa39226ac4618c4c78dd8afcb8e0a82
+--- /dev/null
++++ b/examples/ref_dynamic_once.ax
+@@ -0,0 +1,14 @@
++profile system;
++
++fn index() -> i32 {
++    return 1;
++}
++
++fn read(value: &i32) -> i32 {
++    return *value;
++}
++
++fn main() -> i32 {
++    var values: [i32; 3] = [10, 42, 30];
++    return read(&values[index()]);
++}
+diff --git a/examples/ref_field_mut.ax b/examples/ref_field_mut.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..3393711407597f0a913e32917c4f3e530283bb9e
+--- /dev/null
++++ b/examples/ref_field_mut.ax
+@@ -0,0 +1,17 @@
++profile system;
++
++struct Pair {
++    left: i32,
++    right: i32,
++}
++
++fn set(value: &mut i32) -> i32 {
++    *value = 40;
++    return *value;
++}
++
++fn main() -> i32 {
++    var pair: Pair = Pair { left: 2, right: 3 };
++    set(&mut pair.right);
++    return pair.left + pair.right;
++}
+diff --git a/examples/ref_forward.ax b/examples/ref_forward.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..b70ed87278ff660812f34d0e61c471e8f5355f97
+--- /dev/null
++++ b/examples/ref_forward.ax
+@@ -0,0 +1,15 @@
++profile system;
++
++fn increment(value: &mut i32) -> i32 {
++    *value = *value + 1;
++    return *value;
++}
++
++fn forward(value: &mut i32) -> i32 {
++    return increment(value);
++}
++
++fn main() -> i32 {
++    var value: i32 = 41;
++    return forward(&mut value);
++}
+diff --git a/examples/ref_local_shared.ax b/examples/ref_local_shared.ax
+new file mode 100644
+index 0000000000000000000000000000000000000000..5b9685e7b5ee14e78fadd21acb0a0f37d4f918c9
+--- /dev/null
++++ b/examples/ref_local_shared.ax
+@@ -0,0 +1,10 @@
++profile system;
++
++fn main() -> i32 {
++    var value: i32 = 42;
++    if true {
++        let shared: &i32 = &value;
++        return *shared;
++    }
++    return 0;
++}
+diff --git a/examples/ref_mut_call.ax b/examples/ref_mut_call.ax
+new file mode 100644
