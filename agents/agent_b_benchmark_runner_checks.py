@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import zipfile
@@ -7,9 +8,40 @@ from pathlib import Path
 from unittest.mock import patch
 
 from axiom_bench import RunnerError, assert_local_trust, replay_conformance, run_conformance
+from axiom_bench.bundle import canonical_json, semantic_sha256, sha256_bytes
 from axiom_bench.executor import execute_bounded, minimal_environment
 
 from .agent_b_support import check, require
+
+
+def _read_bundle(path: Path) -> dict[str, bytes]:
+    with zipfile.ZipFile(path, "r") as archive:
+        return {info.filename: archive.read(info) for info in archive.infolist()}
+
+
+def _repair_manifest(files: dict[str, bytes]) -> None:
+    manifest = json.loads(files["bundle-manifest.json"])
+    for relative in manifest["files"]:
+        payload = files[relative]
+        manifest["files"][relative] = {
+            "sha256": sha256_bytes(payload),
+            "size_bytes": len(payload),
+        }
+    semantic_payload = {
+        "bundle_kind": manifest["bundle_kind"],
+        "task_id": manifest["task_id"],
+        "language": manifest["language"],
+        "adapter": manifest["adapter"],
+        "files": manifest["files"],
+    }
+    manifest["semantic_sha256"] = semantic_sha256(semantic_payload)
+    files["bundle-manifest.json"] = canonical_json(manifest).encode("utf-8")
+
+
+def _write_bundle(path: Path, files: dict[str, bytes]) -> None:
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, payload in sorted(files.items()):
+            archive.writestr(name, payload)
 
 
 def register() -> None:
@@ -102,20 +134,45 @@ def register() -> None:
                 adapter="reference",
                 output_directory=base / "run",
             )
-            tampered = base / "tampered.zip"
-            with zipfile.ZipFile(result.bundle_path, "r") as source, zipfile.ZipFile(
-                tampered, "w", zipfile.ZIP_DEFLATED
-            ) as destination:
-                for info in source.infolist():
-                    data = source.read(info)
-                    if info.filename == "candidate.bin":
-                        data = b"tampered\n"
-                    destination.writestr(info, data)
-            report = replay_conformance(root, tampered)
-            require(report["status"] == "failed", "tampered replay unexpectedly passed")
-            codes = {item["code"] for item in report["findings"]}
-            require("AX-BENCH-REPLAY-TAMPERED" in codes, f"tamper code missing: {codes}")
-            return "tampered bundle blocked"
+
+            candidate_files = _read_bundle(result.bundle_path)
+            candidate_files["candidate.bin"] = b"tampered candidate\n"
+            _repair_manifest(candidate_files)
+            candidate_tampered = base / "candidate-tampered.zip"
+            _write_bundle(candidate_tampered, candidate_files)
+            candidate_report = replay_conformance(root, candidate_tampered)
+            require(candidate_report["status"] == "failed", "candidate tamper passed replay")
+            candidate_paths = {item["path"] for item in candidate_report["findings"]}
+            require(
+                "attempt.raw_completion_sha256" in candidate_paths,
+                f"candidate hash finding missing: {candidate_paths}",
+            )
+
+            command_files = _read_bundle(result.bundle_path)
+            command_path = "commands/c04.acceptance-test.json"
+            command = json.loads(command_files[command_path])
+            command["return_code"] = 1
+            command_files[command_path] = canonical_json(command).encode("utf-8")
+            attempt = json.loads(command_files["attempt.json"])
+            reference = next(
+                item for item in attempt["command_records"] if item["path"] == command_path
+            )
+            reference["sha256"] = sha256_bytes(command_files[command_path])
+            command_files["attempt.json"] = canonical_json(attempt).encode("utf-8")
+            report = json.loads(command_files["conformance-report.json"])
+            report["attempt_sha256"] = sha256_bytes(command_files["attempt.json"])
+            command_files["conformance-report.json"] = canonical_json(report).encode("utf-8")
+            _repair_manifest(command_files)
+            command_tampered = base / "command-tampered.zip"
+            _write_bundle(command_tampered, command_files)
+            command_report = replay_conformance(root, command_tampered)
+            require(command_report["status"] == "failed", "command tamper passed replay")
+            command_paths = {item["path"] for item in command_report["findings"]}
+            require(
+                "attempt.outcomes.acceptance_test_success" in command_paths,
+                f"command-derived outcome finding missing: {command_paths}",
+            )
+            return "candidate and command-chain tampering blocked"
 
     check("benchmark-runner-replay-tamper-blocked", tamper_blocked)
 
