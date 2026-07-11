@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -132,7 +133,7 @@ def register() -> None:
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             result = execute_bounded(
-                [support.sys.executable, "-c", "import sys; sys.stdout.write('x'*100000); sys.stdout.flush()"],
+                [sys.executable, "-c", "import sys; sys.stdout.write('x'*100000); sys.stdout.flush()"],
                 cwd=workspace,
                 environment=minimal_environment(workspace),
                 timeout_seconds=5,
