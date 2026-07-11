@@ -189,15 +189,26 @@ def register() -> None:
     def output_limit() -> dict[str, object]:
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
+            script = (
+                "import sys; "
+                "sys.stdout.write('x'*100000); "
+                "sys.stderr.write('y'*100000); "
+                "sys.stdout.flush(); sys.stderr.flush()"
+            )
             result = execute_bounded(
-                [sys.executable, "-c", "import sys; sys.stdout.write('x'*100000); sys.stdout.flush()"],
+                [sys.executable, "-c", script],
                 cwd=workspace,
                 environment=minimal_environment(workspace),
                 timeout_seconds=5,
                 max_output_bytes=1024,
             )
-            require(result.output_limited, "output limit did not trigger")
+            require(result.output_limited, "combined output limit did not trigger")
             require(len(result.stdout) + len(result.stderr) <= 1024, "retained output exceeded cap")
-            return {"retained": len(result.stdout) + len(result.stderr)}
+            require(result.stdout or result.stderr, "combined output test retained no stream bytes")
+            return {
+                "stdout": len(result.stdout),
+                "stderr": len(result.stderr),
+                "combined": len(result.stdout) + len(result.stderr),
+            }
 
     check("benchmark-runner-output-limit", output_limit)
