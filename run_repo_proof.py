@@ -9,6 +9,7 @@ import zipfile
 from hashlib import sha256
 from pathlib import Path
 
+from axiom_bench import check_benchmark_contract
 from axiom_contract import check_project_contract, render_text
 from axiom_proof.arithmetic import PANIC_NAMES
 from axiom_proof.driver import canonical_json, compile_source, prove
@@ -33,9 +34,6 @@ def require(condition: bool, message: str) -> None:
 
 
 def normalize_test_log(text: str) -> str:
-    # unittest reports wall-clock duration, which is useful interactively but
-    # makes the Evidence archive byte-unstable. Preserve every test name and
-    # result while removing only the volatile elapsed-time field.
     return re.sub(r"Ran (\d+) tests? in [0-9.]+s", r"Ran \1 tests", text)
 
 
@@ -62,6 +60,10 @@ def main() -> int:
     (OUT / "project-contract.json").write_text(canonical_json(contract_result), encoding="utf-8")
     (OUT / "project-contract.txt").write_text(render_text(contract_result), encoding="utf-8")
     require(contract_result["status"] == "passed", "project contract consistency gate failed")
+
+    benchmark_contract = check_benchmark_contract(ROOT)
+    (OUT / "benchmark-contract.json").write_text(canonical_json(benchmark_contract), encoding="utf-8")
+    require(benchmark_contract["status"] == "passed", "benchmark contract consistency gate failed")
 
     tests = run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"])
     normalized_test_stdout = normalize_test_log(tests.stdout)
@@ -227,6 +229,12 @@ def main() -> int:
             "deferred_features": contract_result["counts"]["deferred_features"],
             "findings": contract_result["counts"]["findings"],
         },
+        "benchmark_contract": {
+            "status": benchmark_contract["status"],
+            "exit_code": benchmark_contract["exit_code"],
+            "schemas_checked": benchmark_contract["schemas_checked"],
+            "findings": benchmark_contract["finding_count"],
+        },
         "unit_test_exit_code": tests.returncode,
         "unit_tests": test_count,
         "agent_b": {
@@ -246,6 +254,7 @@ def main() -> int:
         "layout": layout_document,
         "panic_code_map": {str(code): name for code, name in sorted(PANIC_NAMES.items())},
         "known_unproven": [
+            "AXIOM-Bench 0.1 frozen suite, runner, language packs, and seed tasks",
             "raw pointers, null pointers, pointer arithmetic, and unsafe blocks",
             "reference returns, reference fields, arrays of references, and reborrowing",
             "lifetime parameters, non-lexical lifetimes, and partial-field borrowing",
@@ -274,6 +283,8 @@ def main() -> int:
             "schema_version": "0.7.0",
             "evidence_zip": ZIP.as_posix(),
             "project_contract": contract_result["status"],
+            "benchmark_contract": benchmark_contract["status"],
+            "benchmark_schemas": benchmark_contract["schemas_checked"],
             "unit_tests": test_count,
             "agent_b_checks": agent_b_report["passed"],
             "differential_cases": len(cases),
