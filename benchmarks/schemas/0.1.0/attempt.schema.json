@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/benchmarks/schemas/0.1.0/attempt.schema.json",
+  "title": "AXIOM-Bench 0.1 attempt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "schema_version",
+    "run_id",
+    "task_id",
+    "language",
+    "lane",
+    "adapter",
+    "trust_class",
+    "attempt_number",
+    "started_at",
+    "finished_at",
+    "raw_completion_path",
+    "raw_completion_sha256",
+    "extracted_artifact_path",
+    "extracted_artifact_sha256",
+    "trace_path",
+    "trace_sha256",
+    "command_records",
+    "outcomes",
+    "failure_reason",
+    "budgets",
+    "usage",
+    "mutations",
+    "evidence_complete"
+  ],
+  "properties": {
+    "document_kind": {"const": "axiom.bench.attempt"},
+    "schema_version": {"const": "0.1.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "language": {"enum": ["axiom", "rust", "zig", "go"]},
+    "lane": {"enum": ["language_only", "compiler_assisted", "full_agent"]},
+    "adapter": {"enum": ["reference", "seeded_wrong", "replay", "inspect_ai", "external_model"]},
+    "trust_class": {"enum": ["trusted_reference", "trusted_seeded_wrong", "replay_only", "untrusted_model_output"]},
+    "attempt_number": {"type": "integer", "minimum": 1, "maximum": 3},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": "string", "format": "date-time"},
+    "raw_completion_path": {"type": ["string", "null"]},
+    "raw_completion_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "extracted_artifact_path": {"type": ["string", "null"]},
+    "extracted_artifact_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "trace_path": {"type": "string", "minLength": 1},
+    "trace_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "command_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["phase", "path", "sha256"],
+        "properties": {
+          "phase": {"enum": ["format", "check", "public_test", "acceptance_test", "security_test"]},
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "outcomes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extraction_success", "parse_success", "compile_success", "public_test_success", "acceptance_test_success", "security_success", "full_success"],
+      "properties": {
+        "extraction_success": {"type": "boolean"},
+        "parse_success": {"type": ["boolean", "null"]},
+        "compile_success": {"type": ["boolean", "null"]},
+        "public_test_success": {"type": ["boolean", "null"]},
+        "acceptance_test_success": {"type": ["boolean", "null"]},
+        "security_success": {"type": ["boolean", "null"]},
+        "full_success": {"type": "boolean"}
+      }
+    },
+    "failure_reason": {
+      "type": ["string", "null"],
+      "enum": [null, "invalid_completion", "invalid_patch", "forbidden_file", "forbidden_dependency", "compile_failure", "public_test_failure", "acceptance_test_failure", "security_failure", "timeout", "resource_limit", "sandbox_required", "runner_error"]
+    },
+    "budgets": {"type": "object"},
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "token_source", "tool_calls", "compiler_invocations", "wall_clock_ms", "feedback_bytes"],
+      "properties": {
+        "input_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "output_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "token_source": {"type": ["string", "null"]},
+        "tool_calls": {"type": "integer", "minimum": 0},
+        "compiler_invocations": {"type": "integer", "minimum": 0},
+        "wall_clock_ms": {"type": "integer", "minimum": 0},
+        "feedback_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "mutations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files_read", "files_changed", "changed_lines", "patch_bytes", "forbidden_paths_attempted"],
+      "properties": {
+        "files_read": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "files_changed": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "changed_lines": {"type": "integer", "minimum": 0},
+        "patch_bytes": {"type": "integer", "minimum": 0},
+        "forbidden_paths_attempted": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "evidence_complete": {"type": "boolean"}
+  }
+}
