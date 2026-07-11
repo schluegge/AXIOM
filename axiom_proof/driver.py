@@ -11,6 +11,7 @@ from .control_flow import build_control_flow_document
 from .formatter import Formatter
 from .hir import lower_program
 from .interpreter import Interpreter
+from .runtime_faults import BoundsFault
 from .lexer import Lexer
 from .llvm_backend import LLVMBackend
 from .parser import Parser
@@ -42,7 +43,7 @@ def compile_source(source_path: Path) -> dict[str, Any]:
     tokens, lexer_diagnostics = Lexer(source).run()
     token_document = {
         "document_kind": "axiom.tokens",
-        "schema_version": "0.4.0",
+        "schema_version": "0.5.0",
         "source": {
             "path": source.path,
             "sha256": source.sha256,
@@ -60,7 +61,7 @@ def compile_source(source_path: Path) -> dict[str, Any]:
     if program is not None:
         ast_document = {
             "document_kind": "axiom.ast",
-            "schema_version": "0.4.0",
+            "schema_version": "0.5.0",
             "root": program.to_dict(),
         }
         semantic = SemanticAnalyzer(program)
@@ -85,7 +86,7 @@ def prove(source_path: Path, output_dir: Path, clang: str = "clang") -> dict[str
         canonical_json(
             {
                 "document_kind": "axiom.diagnostics",
-                "schema_version": "0.4.0",
+                "schema_version": "0.5.0",
                 "diagnostics": [diagnostic.to_dict() for diagnostic in diagnostics],
             }
         ),
@@ -116,6 +117,12 @@ def prove(source_path: Path, output_dir: Path, clang: str = "clang") -> dict[str
         "types.json": semantic.type_document(),
         "effects.json": semantic.effect_document(),
         "ownership.json": semantic.ownership_document(),
+        "layouts.json": {
+            "document_kind": "axiom.layouts",
+            "schema_version": "0.5.0",
+            "target": "x86_64-unknown-linux-gnu",
+            "layouts": [semantic.layout_document(name)["layout"] for name in sorted(semantic.registry.structs)],
+        },
         "hir.json": lower_program(program, semantic.node_types),
         "control-flow.json": build_control_flow_document(program),
     }
@@ -131,10 +138,10 @@ def prove(source_path: Path, output_dir: Path, clang: str = "clang") -> dict[str
             "panic_name": None,
             "diagnostic_code": None,
         }
-    except ArithmeticFault as fault:
+    except (ArithmeticFault, BoundsFault) as fault:
         interpreter_result = fault.exit_code
         interpreter_outcome = {
-            "kind": "arithmetic_fault",
+            "kind": ("arithmetic_fault" if isinstance(fault, ArithmeticFault) else "bounds_fault"),
             "exit_code": fault.exit_code,
             "panic_name": fault.panic_name,
             "diagnostic_code": fault.diagnostic_code,
@@ -142,7 +149,7 @@ def prove(source_path: Path, output_dir: Path, clang: str = "clang") -> dict[str
         }
     interpreter_document = {
         "document_kind": "axiom.interpreter-result",
-        "schema_version": "0.4.0",
+        "schema_version": "0.5.0",
         "outcome": interpreter_outcome,
         "exit_code": interpreter_result,
         "steps": interpreter.steps,
@@ -150,11 +157,15 @@ def prove(source_path: Path, output_dir: Path, clang: str = "clang") -> dict[str
     }
     (output_dir / "interpreter.json").write_text(canonical_json(interpreter_document), encoding="utf-8")
 
-    llvm_ir = LLVMBackend(program).emit()
+    llvm_ir = LLVMBackend(program, node_types=semantic.node_types).emit()
     llvm_path = output_dir / "program.ll"
     binary_path = output_dir / "program.native"
     llvm_path.write_text(llvm_ir, encoding="utf-8")
-    runtime_path = Path(__file__).resolve().parents[1] / "runtime" / "axiom_runtime.c"
+    runtime_absolute = Path(__file__).resolve().parents[1] / "runtime" / "axiom_runtime.c"
+    try:
+        runtime_path = runtime_absolute.relative_to(Path.cwd().resolve())
+    except ValueError:
+        runtime_path = runtime_absolute
     compile_command = [
         clang,
         "-Wno-override-module",

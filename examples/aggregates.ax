@@ -1,0 +1,30 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+struct Packet {
+    flag: bool,
+    pair: Pair,
+    values: [i32; 3],
+}
+
+fn sum_pair(pair: Pair) -> i32 {
+    return pair.left + pair.right;
+}
+
+fn main() -> i32 {
+    let packet: Packet = Packet {
+        flag: true,
+        pair: Pair { left: 20, right: 22 },
+        values: [4, 5, 6],
+    };
+    let index: i32 = 2;
+    if packet.flag {
+        return sum_pair(packet.pair) + packet.values[index];
+    } else {
+        return 0;
+    }
+}

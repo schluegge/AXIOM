@@ -1,0 +1,11 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+fn main() -> i32 {
+    let pair: Pair = Pair { left: true, right: 20 };
+    return pair.right;
+}

@@ -1,0 +1,6 @@
+profile system;
+
+fn main() -> i32 {
+    let value: i32 = 1;
+    return value[0];
+}

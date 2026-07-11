@@ -1,0 +1,9 @@
+profile system;
+
+struct Holder {
+    missing: Missing,
+}
+
+fn main() -> i32 {
+    return 0;
+}

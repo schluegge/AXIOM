@@ -126,3 +126,37 @@ Evidence boundary:
 
 Context7 established the source-level LLVM contracts. Clang execution and the
 interpreter/native differential corpus establish the local proof.
+
+## LLVM aggregates and indexing — v0.5.0
+
+Resolved source:
+
+```text
+/llvm/llvm-project
+```
+
+Official contracts used:
+
+- identified struct types use `%Name = type { <field types> }`
+- fixed arrays use `[N x ElementType]`
+- aggregate values can be constructed with `insertvalue`
+- aggregate fields and literal array positions can be read with `extractvalue`
+- `getelementptr` computes aggregate addresses from a base type and pointer
+- struct GEP field indices are constant `i32` values
+- array GEP indices may be runtime integer values
+- every runtime array index must be checked before the GEP/load path when the
+  language promises bounds safety
+
+Applied in:
+
+- `axiom_proof/llvm_backend.py`
+- `axiom_proof/layout.py`
+- `tests/test_aggregates.py`
+- `agents/agent_b_review.py`
+- `AGGREGATE_SEMANTICS.md`
+
+Proof boundary:
+
+Context7 established the LLVM contracts. Clang execution, the independent C
+layout probe, the LLVM GEP layout probe, and interpreter/native differential
+programs establish the local executable evidence.

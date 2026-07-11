@@ -1,0 +1,10 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    left: i32,
+}
+
+fn main() -> i32 {
+    return 0;
+}

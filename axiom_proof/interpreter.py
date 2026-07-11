@@ -5,6 +5,24 @@ from typing import Any
 
 from .arithmetic import checked_add, checked_mul, checked_sub, truncating_division, truncating_remainder
 from .model import Node
+from .runtime_faults import array_index_out_of_bounds
+
+
+@dataclass(frozen=True)
+class StructValue:
+    type_name: str
+    fields: tuple[tuple[str, Any], ...]
+
+    def get(self, name: str) -> Any:
+        for field_name, value in self.fields:
+            if field_name == name:
+                return value
+        raise RuntimeError(f"AX-RUNTIME-STRUCT-0001: missing field {name} on {self.type_name}")
+
+
+@dataclass(frozen=True)
+class ArrayValue:
+    items: tuple[Any, ...]
 
 
 @dataclass
@@ -133,6 +151,29 @@ class Interpreter:
                 expression.fields["callee"],
                 [self.eval_expr(argument, environment) for argument in expression.fields["arguments"]],
             )
+        if expression.kind == "StructLiteral":
+            return StructValue(
+                expression.fields["type_name"],
+                tuple(
+                    (field.fields["name"], self.eval_expr(field.fields["value"], environment))
+                    for field in expression.fields["fields"]
+                ),
+            )
+        if expression.kind == "ArrayLiteral":
+            return ArrayValue(tuple(self.eval_expr(item, environment) for item in expression.fields["elements"]))
+        if expression.kind == "FieldExpr":
+            base = self.eval_expr(expression.fields["base"], environment)
+            if not isinstance(base, StructValue):
+                raise RuntimeError("AX-RUNTIME-STRUCT-0002: field access on non-struct value")
+            return base.get(expression.fields["field"])
+        if expression.kind == "IndexExpr":
+            base = self.eval_expr(expression.fields["base"], environment)
+            index = self.eval_expr(expression.fields["index"], environment)
+            if not isinstance(base, ArrayValue):
+                raise RuntimeError("AX-RUNTIME-INDEX-0002: index access on non-array value")
+            if not 0 <= index < len(base.items):
+                raise array_index_out_of_bounds(index, len(base.items))
+            return base.items[index]
         if expression.kind == "BinaryExpr":
             left = self.eval_expr(expression.fields["left"], environment)
             right = self.eval_expr(expression.fields["right"], environment)

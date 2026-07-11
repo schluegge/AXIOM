@@ -1,0 +1,9 @@
+profile system;
+
+struct EmptyHolder {
+    values: [i32; 0],
+}
+
+fn main() -> i32 {
+    return 0;
+}

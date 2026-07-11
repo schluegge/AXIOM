@@ -1,17 +1,18 @@
-# AXIOM v0.4.0 Reference Compiler
+# AXIOM v0.5.0 Reference Compiler
 
-AXIOM is an AI-first universal systems language project. This repository currently contains an executed Python/LLVM semantic oracle for the bootstrap compiler.
+AXIOM is an AI-first universal systems language project. This repository
+contains an executed Python/LLVM semantic oracle for the planned Rust bootstrap
+compiler.
 
-The proven vertical path is:
+The current vertical path is:
 
 ```text
 UTF-8 source
 → lexer
-→ parser
-→ versioned AST
+→ parser and versioned AST
 → canonical formatter
-→ name resolution
-→ type/effect checking
+→ name/type/effect analysis
+→ target layout engine
 → HIR and CFG
 → interpreter
 → checked LLVM IR
@@ -20,57 +21,60 @@ UTF-8 source
 → interpreter/native differential proof
 ```
 
-The current subset includes:
+## Current language subset
 
 - `i32` and `bool`
-- functions and recursion
-- immutable `let` and mutable `var`
-- assignments and lexical block scopes
+- functions, recursion, `let`, `var`, assignment, lexical scopes
 - `if` and `while`
 - checked signed `i32` arithmetic
-- stable arithmetic panic identities
-- C-compatible function lowering
+- structs and fixed-size arrays
+- nested aggregate values
+- aggregate parameters and returns by value
+- field and index reads
+- checked dynamic array indexing
+- deterministic x86_64 Linux layout inspection
+- simple C-compatible struct-by-value interoperability
 - `system` and `script` profile parsing
 
-## Run the repository proof
+## Run the complete repository proof
 
 Requirements:
 
-- Python 3.11 or newer
-- Clang with support for textual LLVM IR
-
-From the repository root:
+- Python 3.11+
+- Clang with textual LLVM IR support
 
 ```bash
 python3 run_repo_proof.py
 ```
 
-The command runs the unit suite and interpreter/native differential corpus, then creates:
+The runner executes the complete test suite, the separate Agent B adversarial
+review, the interpreter/native differential corpus, invalid diagnostics, and
+layout inspection. It creates:
 
 ```text
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
 
-Generated binaries, objects, WebAssembly files, and Evidence ZIPs are ignored by Git.
+## Inspect layout
 
-## Checked arithmetic
+```bash
+python3 -m axiom_proof.cli explain layout examples/layout.ax Mixed
+```
 
-The current default is checked signed `i32`:
+The command emits deterministic JSON with size, alignment, offsets, padding,
+array stride, target, and representation identity.
 
-- out-of-range literals fail compilation with `AX-INT-0001`
-- addition, subtraction, and multiplication panic on overflow
-- division rounds toward zero
-- remainder has the dividend sign
-- division/remainder by zero panic
-- `INT_MIN / -1` and `INT_MIN % -1` panic
-- interpreter and native execution use the same panic identity and reference exit code
+## Governing semantics
 
-See `ARITHMETIC_SEMANTICS.md`.
-
-## Development contract
-
-Read `AGENTS.md` before changing compiler behavior. External LLVM, ABI, linker, runtime, and protocol APIs require authoritative source evidence before implementation.
+- `ARITHMETIC_SEMANTICS.md`
+- `AGGREGATE_SEMANTICS.md`
+- `AGENTS.md`
+- `PROOF_STATUS.md`
+- `CONTEXT7_SOURCE_EVIDENCE.md`
 
 ## Proof boundary
 
-This repository is an executable architecture and semantics oracle. It is not AXIOM 1.0 and does not replace the planned Rust bootstrap compiler. Current proven and unproven boundaries are recorded in `PROOF_STATUS.md`.
+This is an executable architecture and semantics oracle, not AXIOM 1.0. It
+does not yet prove the Rust bootstrap compiler, full ownership/lifetimes,
+slices, heap allocation, broad platform ABI stability, GPU execution, LSP,
+package ecosystem, or self-hosting.

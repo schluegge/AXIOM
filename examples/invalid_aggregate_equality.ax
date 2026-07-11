@@ -1,0 +1,12 @@
+profile system;
+
+struct Pair {
+    left: i32,
+    right: i32,
+}
+
+fn main() -> bool {
+    let left: Pair = Pair { left: 1, right: 2 };
+    let right: Pair = Pair { left: 1, right: 2 };
+    return left == right;
+}

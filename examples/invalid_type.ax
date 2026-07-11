@@ -1,0 +1,6 @@
+profile system;
+
+fn main() -> i32 {
+    let flag: bool = true;
+    return flag + 1;
+}

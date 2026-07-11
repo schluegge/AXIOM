@@ -39,6 +39,7 @@ SINGLES = {
     "/": "slash",
     "%": "percent",
     "&": "ampersand",
+    ".": "dot",
 }
 
 
