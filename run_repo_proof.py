@@ -5,11 +5,12 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from hashlib import sha256
 from pathlib import Path
 
-from axiom_bench import check_benchmark_contract
+from axiom_bench import check_benchmark_contract, replay_conformance, run_conformance
 from axiom_contract import check_project_contract, render_text
 from axiom_proof.arithmetic import PANIC_NAMES
 from axiom_proof.driver import canonical_json, compile_source, prove
@@ -48,6 +49,114 @@ def write_deterministic_zip(source: Path, destination: Path) -> None:
     with zipfile.ZipFile(destination) as archive:
         require(archive.testzip() is None, "evidence ZIP CRC failure")
         require(all("\\" not in name for name in archive.namelist()), "non-portable ZIP path")
+
+
+def canonical_replay_report(report: dict[str, object], bundle_name: str) -> dict[str, object]:
+    value = json.loads(json.dumps(report))
+    value["bundle_path"] = f"benchmark-conformance/{bundle_name}"
+    return value
+
+
+def prove_benchmark_conformance() -> dict[str, object]:
+    evidence_root = OUT / "benchmark-conformance"
+    evidence_root.mkdir(parents=True)
+    fixture = ROOT / "tests" / "fixtures" / "benchmark_runner" / "task.json"
+
+    with tempfile.TemporaryDirectory(prefix="axiom-repo-bench-") as directory:
+        temporary = Path(directory)
+        reference_first = run_conformance(
+            ROOT,
+            fixture,
+            language="axiom",
+            adapter="reference",
+            output_directory=temporary / "reference-first",
+        )
+        reference_second = run_conformance(
+            ROOT,
+            fixture,
+            language="axiom",
+            adapter="reference",
+            output_directory=temporary / "reference-second",
+        )
+        seeded_wrong = run_conformance(
+            ROOT,
+            fixture,
+            language="axiom",
+            adapter="seeded_wrong",
+            output_directory=temporary / "seeded-wrong",
+        )
+
+        require(reference_first.conformance_passed, "reference conformance did not pass")
+        require(reference_first.full_success, "reference conformance was not fully successful")
+        require(reference_second.conformance_passed, "second reference conformance did not pass")
+        require(
+            reference_first.bundle_sha256 == reference_second.bundle_sha256,
+            "reference conformance bundle hashes differ",
+        )
+        require(
+            reference_first.bundle_path.read_bytes() == reference_second.bundle_path.read_bytes(),
+            "reference conformance bundle bytes differ",
+        )
+        require(seeded_wrong.conformance_passed, "seeded-wrong harness conformance did not pass")
+        require(not seeded_wrong.full_success, "seeded-wrong candidate unexpectedly succeeded")
+        require(
+            seeded_wrong.failure_reason == "acceptance_test_failure",
+            "seeded-wrong candidate failed at the wrong phase",
+        )
+
+        reference_bundle = evidence_root / "reference.zip"
+        seeded_wrong_bundle = evidence_root / "seeded-wrong.zip"
+        shutil.copyfile(reference_first.bundle_path, reference_bundle)
+        shutil.copyfile(seeded_wrong.bundle_path, seeded_wrong_bundle)
+        (evidence_root / "reference-report.json").write_text(
+            canonical_json(reference_first.report), encoding="utf-8"
+        )
+        (evidence_root / "seeded-wrong-report.json").write_text(
+            canonical_json(seeded_wrong.report), encoding="utf-8"
+        )
+
+    reference_replay = replay_conformance(ROOT, reference_bundle)
+    seeded_wrong_replay = replay_conformance(ROOT, seeded_wrong_bundle)
+    require(reference_replay["status"] == "passed", "reference replay failed")
+    require(seeded_wrong_replay["status"] == "passed", "seeded-wrong replay failed")
+    require(reference_replay["subprocesses_executed"] == 0, "reference replay executed a process")
+    require(
+        seeded_wrong_replay["subprocesses_executed"] == 0,
+        "seeded-wrong replay executed a process",
+    )
+    (evidence_root / "reference-replay.json").write_text(
+        canonical_json(canonical_replay_report(reference_replay, "reference.zip")),
+        encoding="utf-8",
+    )
+    (evidence_root / "seeded-wrong-replay.json").write_text(
+        canonical_json(canonical_replay_report(seeded_wrong_replay, "seeded-wrong.zip")),
+        encoding="utf-8",
+    )
+
+    summary = {
+        "document_kind": "axiom.bench.trusted-conformance-proof",
+        "schema_version": "0.1.0",
+        "fixture": "tests/fixtures/benchmark_runner/task.json",
+        "language": "axiom",
+        "reference": {
+            "conformance_passed": reference_first.conformance_passed,
+            "full_success": reference_first.full_success,
+            "bundle_sha256": digest(reference_bundle),
+            "byte_reproducible": True,
+            "replay_status": reference_replay["status"],
+            "replay_subprocesses": reference_replay["subprocesses_executed"],
+        },
+        "seeded_wrong": {
+            "conformance_passed": seeded_wrong.conformance_passed,
+            "full_success": seeded_wrong.full_success,
+            "failure_reason": seeded_wrong.failure_reason,
+            "bundle_sha256": digest(seeded_wrong_bundle),
+            "replay_status": seeded_wrong_replay["status"],
+            "replay_subprocesses": seeded_wrong_replay["subprocesses_executed"],
+        },
+    }
+    (evidence_root / "summary.json").write_text(canonical_json(summary), encoding="utf-8")
+    return summary
 
 
 def main() -> int:
@@ -93,6 +202,8 @@ def main() -> int:
     require(agent_b.returncode == 0, "Agent B adversarial review failed")
     agent_b_report = json.loads((agent_b_dir / "agent-b-review.json").read_text(encoding="utf-8"))
     require(agent_b_report["status"] == "passed", "Agent B report is not passed")
+
+    benchmark_conformance = prove_benchmark_conformance()
 
     cases = {
         "loop": ("loop.ax", 55, None),
@@ -235,6 +346,7 @@ def main() -> int:
             "schemas_checked": benchmark_contract["schemas_checked"],
             "findings": benchmark_contract["finding_count"],
         },
+        "benchmark_conformance": benchmark_conformance,
         "unit_test_exit_code": tests.returncode,
         "unit_tests": test_count,
         "agent_b": {
@@ -254,7 +366,8 @@ def main() -> int:
         "layout": layout_document,
         "panic_code_map": {str(code): name for code, name in sorted(PANIC_NAMES.items())},
         "known_unproven": [
-            "AXIOM-Bench 0.1 frozen suite, runner, language packs, and seed tasks",
+            "AXIOM-Bench 0.1 frozen suite, equal-spec language packs, real seed tasks, and frozen toolchains",
+            "approved sandbox and live-model adapters for untrusted model output",
             "raw pointers, null pointers, pointer arithmetic, and unsafe blocks",
             "reference returns, reference fields, arrays of references, and reborrowing",
             "lifetime parameters, non-lexical lifetimes, and partial-field borrowing",
@@ -285,6 +398,7 @@ def main() -> int:
             "project_contract": contract_result["status"],
             "benchmark_contract": benchmark_contract["status"],
             "benchmark_schemas": benchmark_contract["schemas_checked"],
+            "benchmark_conformance": benchmark_conformance,
             "unit_tests": test_count,
             "agent_b_checks": agent_b_report["passed"],
             "differential_cases": len(cases),
