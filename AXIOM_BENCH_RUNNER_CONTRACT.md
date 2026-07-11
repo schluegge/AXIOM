@@ -79,7 +79,10 @@ bundle root.
 The caller must provide a path that does not already exist. The runner creates
 that directory but never recursively replaces an existing directory.
 
-The output directory may not be inside the repository or task root.
+The output directory may not be inside the repository or task root. Creation or
+initial Evidence-write failure is returned as a structured
+`AX-BENCH-RUNNER-INVALID-PATH` finding rather than an unhandled filesystem
+exception.
 
 ## 6. Candidate application
 
@@ -176,7 +179,7 @@ The trusted runner enforces:
 - per-command timeout;
 - total-task timeout;
 - combined retained stdout/stderr bytes per command;
-- cumulative feedback bytes across commands.
+- cumulative canonical feedback bytes across commands.
 
 Token, iteration, and tool-call fields are retained for later model adapters but
 are not consumed by the provider-free trusted adapters.
@@ -222,15 +225,18 @@ AXIOM_BENCH_CONFORMANCE.zip
 The ZIP contains the complete `canonical/` file set at its root. The external
 report additionally records the final ZIP SHA-256.
 
-Raw Evidence keeps real timestamps and durations. Canonical Evidence normalizes
-only declared volatile data:
+Raw Evidence keeps real timestamps, durations, absolute temporary paths, and
+original stdout/stderr bytes. Canonical Evidence normalizes only declared
+volatile data:
 
 - timestamps to `1970-01-01T00:00:00Z`;
 - durations and wall-clock usage to zero;
-- temporary roots to stable placeholders.
+- temporary workspace and task-root strings in metadata, trace payloads, and
+  stdout/stderr bytes to stable placeholders.
 
-Candidate bytes, arguments, environment, outputs, exit status, timeout/limit
-facts, outcomes, failure reason, and hashes are not normalized away.
+Candidate bytes, non-path output content, exit status, timeout/limit facts,
+outcomes, failure reason, and hashes of the resulting canonical payloads are not
+normalized away.
 
 ## 12. Conformance decision
 
@@ -249,27 +255,35 @@ A wrong candidate that succeeds is a harness failure, not a successful result.
 ## 13. Deterministic bundle
 
 Canonical ZIPs use sorted paths, fixed timestamps, fixed regular-file
-permissions, canonical JSON, deterministic compression settings, and no raw
-volatile records.
+permissions, canonical JSON, deterministic compression settings, stable
+placeholder substitution, and no raw volatile records.
 
 Two runs of the same trusted fixture under the same frozen effective toolchain
-must produce byte-identical canonical ZIPs.
+must produce byte-identical canonical ZIPs, including when a command emits the
+temporary workspace or task-root path.
 
 ## 14. Replay
 
 Replay:
 
 - starts zero subprocesses;
-- rejects unsafe, duplicate, colliding, encrypted, symlink, oversized, or
-  over-count ZIP entries;
+- rejects unsafe, duplicate, colliding, encrypted, symlink, or over-count ZIP
+  entries;
+- enforces both declared ZIP sizes and actual streamed decompressed entry/total
+  byte limits;
+- converts malformed archives and memory exhaustion into a failed replay report;
 - validates manifest, attempt, command, report, trace, and replay schemas;
 - safely resolves every path read from internal JSON;
 - verifies the exact archive file set;
 - verifies file hashes and sizes;
 - verifies manifest semantic identity;
 - verifies task, language, adapter, attempt, trace, command, and stream links;
+- verifies actual candidate bytes against retained candidate hashes;
 - verifies trace sequence numbers;
-- recomputes full success and conformance from retained Evidence.
+- derives phase outcomes and the first failure from retained command/stream
+  Evidence and budgets;
+- requires attempt, report, check-result trace, and score-decision trace values
+  to agree with the replay-derived decision.
 
 Any malformed or inconsistent bundle fails with
 `AX-BENCH-REPLAY-TAMPERED`.
@@ -290,7 +304,8 @@ AX-BENCH-SANDBOX-REQUIRED
 AX-BENCH-REPLAY-TAMPERED
 ```
 
-Machine-readable findings contain code, path or phase, and message.
+Machine-readable findings contain code, path or phase, and message. Attempt and
+conformance-report documents share one exact failure-reason vocabulary.
 
 ## 16. Explicit non-goals
 
@@ -304,5 +319,8 @@ This capability does not provide:
 - compiler installation;
 - operating-system CPU, memory, syscall, disk, or network quotas;
 - complete host filesystem mutation confinement;
+- cryptographic authenticity against an attacker who can consistently rewrite
+  every semantic document and hash without an external signature or
+  transparency anchor;
 - multi-file full-agent editing;
 - statistical analysis or AI-first superiority evidence.
