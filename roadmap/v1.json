@@ -4,7 +4,7 @@
   "release": "v1.0.0",
   "program_issue": 9,
   "release_gate_issue": 25,
-  "active_milestone": "M0",
+  "active_milestone": "M1",
   "canonical_documents": [
     "MVP_ROADMAP.md",
     "AI_FIRST_MVP_CONTRACT.md",
@@ -12,8 +12,8 @@
     "CONTEXT7_MVP_DESIGN_EVIDENCE.md"
   ],
   "milestones": [
-    {"id":"M0","issue":11,"depends_on":null,"status":"active","title_prefix":"M0:","next":"M1"},
-    {"id":"M1","issue":12,"depends_on":"M0","status":"blocked","title_prefix":"M1:","next":"M2"},
+    {"id":"M0","issue":11,"depends_on":null,"status":"complete","title_prefix":"M0:","next":"M1"},
+    {"id":"M1","issue":12,"depends_on":"M0","status":"active","title_prefix":"M1:","next":"M2"},
     {"id":"M2","issue":13,"depends_on":"M1","status":"blocked","title_prefix":"M2:","next":"M3"},
     {"id":"M3","issue":14,"depends_on":"M2","status":"blocked","title_prefix":"M3:","next":"M4"},
     {"id":"M4","issue":15,"depends_on":"M3","status":"blocked","title_prefix":"M4:","next":"M5"},
