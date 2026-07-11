@@ -101,7 +101,7 @@ class Formatter:
             return f"{self.format_expr(expression.fields['base'])}[{self.format_expr(expression.fields['index'])}]"
         if expression.kind == "BinaryExpr":
             return (
-                f ({self.format_expr(expression.fields['left'])} "
+                f"({self.format_expr(expression.fields['left'])} "
                 f"{expression.fields['operator']} "
                 f"{self.format_expr(expression.fields['right'])})"
             )
