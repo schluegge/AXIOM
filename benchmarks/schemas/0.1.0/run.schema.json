@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/benchmarks/schemas/0.1.0/run.schema.json",
+  "title": "AXIOM-Bench 0.1 run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "schema_version",
+    "run_id",
+    "benchmark_version",
+    "suite_sha256",
+    "repository_commit",
+    "status",
+    "lane",
+    "adapter",
+    "trust_class",
+    "sandbox",
+    "model",
+    "generation",
+    "toolchains",
+    "order_seed",
+    "started_at",
+    "finished_at",
+    "attempt_paths",
+    "invalidated_tasks",
+    "summary",
+    "bundle_sha256"
+  ],
+  "properties": {
+    "document_kind": {"const": "axiom.bench.run"},
+    "schema_version": {"const": "0.1.0"},
+    "run_id": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"},
+    "benchmark_version": {"type": "string", "pattern": "^0\\.1\\.[0-9]+$"},
+    "suite_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "repository_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "status": {"enum": ["running", "passed", "failed", "incomplete", "invalid"]},
+    "lane": {"enum": ["language_only", "compiler_assisted", "full_agent"]},
+    "adapter": {"enum": ["reference", "seeded_wrong", "replay", "inspect_ai", "external_model"]},
+    "trust_class": {"enum": ["trusted_reference", "trusted_seeded_wrong", "replay_only", "untrusted_model_output"]},
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "isolated", "configuration_sha256", "notes"],
+      "properties": {
+        "backend": {"enum": ["local_reliability_only", "docker", "vm", "cloud_sandbox", "replay_none"]},
+        "isolated": {"type": "boolean"},
+        "configuration_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "notes": {"type": "string", "minLength": 1}
+      }
+    },
+    "model": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["provider", "identifier", "dated_version", "adapter_version", "cutoff_notes"],
+      "properties": {
+        "provider": {"type": "string", "minLength": 1},
+        "identifier": {"type": "string", "minLength": 1},
+        "dated_version": {"type": ["string", "null"]},
+        "adapter_version": {"type": "string", "minLength": 1},
+        "cutoff_notes": {"type": "string", "minLength": 1}
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["settings_source"],
+      "properties": {
+        "settings_source": {"type": "string", "minLength": 1}
+      }
+    },
+    "toolchains": {
+      "type": "object",
+      "required": ["axiom", "rust", "zig", "go"],
+      "additionalProperties": false,
+      "properties": {
+        "axiom": {"$ref": "#/$defs/toolchain"},
+        "rust": {"$ref": "#/$defs/toolchain"},
+        "zig": {"$ref": "#/$defs/toolchain"},
+        "go": {"$ref": "#/$defs/toolchain"}
+      }
+    },
+    "order_seed": {"type": "integer", "minimum": 0},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": ["string", "null"], "format": "date-time"},
+    "attempt_paths": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "invalidated_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "language", "reason", "evidence_path"],
+        "properties": {
+          "task_id": {"type": "string", "minLength": 1},
+          "language": {"enum": ["axiom", "rust", "zig", "go"]},
+          "reason": {"type": "string", "minLength": 1},
+          "evidence_path": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tasks_total", "tasks_valid", "tasks_invalid", "tasks_successful", "attempts_total", "missing_metrics"],
+      "properties": {
+        "tasks_total": {"type": "integer", "minimum": 0},
+        "tasks_valid": {"type": "integer", "minimum": 0},
+        "tasks_invalid": {"type": "integer", "minimum": 0},
+        "tasks_successful": {"type": "integer", "minimum": 0},
+        "attempts_total": {"type": "integer", "minimum": 0},
+        "missing_metrics": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "bundle_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "identity_status", "artifact_sha256", "version_output"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": ["string", "null"]},
+        "identity_status": {"enum": ["pending", "frozen", "unavailable"]},
+        "artifact_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "version_output": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
