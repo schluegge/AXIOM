@@ -1,0 +1,170 @@
++## Result before final repository gate
+ 
+-- 40/40 unit/integration tests passed
+-- field, array, dynamic-index, and nested writes match natively
+-- OOB writes match panic identity/code 108
+-- copy-by-value isolation remains intact
+-- RHS-before-target and once-only index evaluation are proven
+-- direct scalar leaf stores avoid whole-aggregate rewrites
++- 51/51 unit/integration tests passed
++- 51/51 Agent-B adversarial checks passed
++- shared and mutable scalar/subobject references match natively
++- dynamic borrowed indices execute once and preserve panic 108
++- call argument loans obey left-to-right and nested-call lifetime rules
++- no pointer forging or null reference construction appears in LLVM
+ 
+ ## Known limits
+ 
+-No references, borrowing, slices, pointer syntax, heap ownership, compound or
+-destructuring assignment, mutation through temporaries, packed layout, or broad
+-platform ABI claim.
++No raw pointers, `unsafe`, reference returns, reference aggregate storage,
++reborrowing, lifetime parameters, non-lexical lifetimes, field-sensitive
++borrowing, slices, heap ownership, or broad platform ABI claim.
+diff --git a/agents/AGENT_B_CHARTER.md b/agents/AGENT_B_CHARTER.md
+index dfe3efd881033532f242e94a398c3f4d70789a07..977b4d17b94f2ced2cf93c2a3cbbf09dcb10d29d 100644
+--- a/agents/AGENT_B_CHARTER.md
++++ b/agents/AGENT_B_CHARTER.md
+@@ -1,25 +1,27 @@
+ # Agent B Adversarial Review Charter
+ 
+-Version: 0.6.0
++Version: 0.7.0
+ 
+ Agent B is a separate deterministic review process, not a second model
+ instance. It blocks release on any failed check.
+ 
+-Required structured-mutation checks:
++Required reference checks:
+ 
+-- assignment target remains a nested expression AST/HIR
+-- formatter reparses structured targets
+-- root mutability and every stable diagnostic are enforced
+-- field, array, dynamic, nested, and copy-isolation programs match natively
+-- dynamic write OOB identity/code matches interpreter and native execution
+-- RHS failure precedes l-value bounds failure
+-- dynamic index expression executes exactly once
+-- LLVM bounds guard precedes dynamic GEP and store
+-- field and nested writes use direct leaf stores
+-- symbols/effects/ownership expose write facts
+-- generated valid/OOB write matrix passes
+-- mutation compiler artifacts are deterministic
+-- all aggregate/layout/C-ABI and arithmetic/control-flow regressions remain green
++- reference AST/types and formatter roundtrip
++- shared/mutable interpreter-native parity
++- field and array subobject borrows
++- non-null pointer lowering without `inttoptr`, `ptrtoint`, or null
++- stable conflict and escape diagnostics
++- borrow release at block and call-expression boundaries
++- left-to-right argument evaluation
++- mutable-reference loan linearity over complete argument lists
++- nested inner-call loan release and outer-loan retention
++- dynamic borrowed index evaluated exactly once
++- bounds guard before GEP and dereference
++- ownership/symbol/effect borrow facts
++- generated reference matrix
++- deterministic compiler artifacts
++- all v0.6 and earlier regressions remain green
+ 
+ A failing assertion may only be changed when evidence proves that the assertion
+ itself is invalid. The replacement must continue detecting the original defect
+diff --git a/agents/agent_b_reference_checks.py b/agents/agent_b_reference_checks.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..8587deef7388679ec9bee557626fbded3d86ed2c
+--- /dev/null
++++ b/agents/agent_b_reference_checks.py
+@@ -0,0 +1,198 @@
++from __future__ import annotations
++
++import json
++import tempfile
++from pathlib import Path
++from typing import Any
++
++from axiom_proof.driver import compile_source, prove, structural_ast
++from axiom_proof.formatter import Formatter
++from .agent_b_support import check, exact_diagnostic, fixture, require, sha256, write_temp_source
++
++
++def reference_surface_and_formatter() -> dict[str, Any]:
++    result = compile_source(fixture("ref_mut_call.ax"))
++    require(not result["diagnostics"], "mutable reference fixture has diagnostics")
++    program = result["program"]
++    assert program is not None and result["ast"] is not None
++    serialized = json.dumps(result["ast"], sort_keys=True)
++    for kind in ["BorrowExpr", "DerefExpr"]:
++        require(f'"kind": "{kind}"' in serialized, f"AST missing {kind}")
++    formatted = Formatter().format(program)
++    require("value: &mut i32" in formatted, "formatter lost mutable reference type")
++    require("*value = (*value + 1);" in formatted, "formatter lost dereference assignment")
++    reparsed = compile_source(write_temp_source(formatted))
++    require(not reparsed["diagnostics"], "formatted reference fixture did not compile")
++    assert reparsed["ast"] is not None
++    require(
++        structural_ast(result["ast"]["root"]) == structural_ast(reparsed["ast"]["root"]),
++        "reference formatter changed structural AST",
++    )
++    return {"kinds": ["BorrowExpr", "DerefExpr"], "roundtrip": True}
++
++
++def reference_differential() -> dict[str, int]:
++    cases = {
++        "ref_shared_call.ax": 42,
++        "ref_mut_call.ax": 42,
++        "ref_shared_alias.ax": 42,
++        "ref_field_mut.ax": 42,
++        "ref_array_mut.ax": 44,
++        "ref_local_shared.ax": 42,
++        "ref_scope_release.ax": 42,
++        "ref_argument_order.ax": 42,
++        "ref_dynamic_once.ax": 42,
++        "ref_forward.ax": 42,
++        "ref_shared_local_alias.ax": 42,
++        "ref_shared_then_mut_scope.ax": 42,
++        "ref_nested_call_release.ax": 42,
++    }
++    for name, expected in cases.items():
++        with tempfile.TemporaryDirectory() as directory:
++            result = prove(fixture(name), Path(directory))
++            require(result["status"] == "passed", f"{name}: proof failed")
++            require(result["interpreter_exit_code"] == expected, f"{name}: interpreter mismatch")
++            require(result["native_exit_code"] == expected, f"{name}: native mismatch")
++    return cases
++
++
++def reference_diagnostics() -> dict[str, str]:
++    expected = {
++        "invalid_ref_mut_immutable.ax": "AX-BORROW-0001",
++        "invalid_ref_shared_during_mut.ax": "AX-BORROW-0002",
++        "invalid_ref_mut_conflict.ax": "AX-BORROW-0003",
++        "invalid_ref_read_during_mut.ax": "AX-BORROW-0004",
++        "invalid_ref_write_during_shared.ax": "AX-BORROW-0005",
++        "invalid_ref_shared_write.ax": "AX-BORROW-0006",
++        "invalid_ref_reborrow.ax": "AX-BORROW-0007",
++        "invalid_ref_duplicate_mut_value.ax": "AX-BORROW-0008",
++        "invalid_ref_use_after_loan_in_args.ax": "AX-BORROW-0009",
++        "invalid_ref_return.ax": "AX-REF-0001",
++        "invalid_ref_field.ax": "AX-REF-0002",
++        "invalid_ref_array.ax": "AX-REF-0002",
++        "invalid_ref_var_binding.ax": "AX-REF-0004",
++        "invalid_ref_nonborrow_initializer.ax": "AX-REF-0005",
++        "invalid_ref_deref_scalar.ax": "AX-REF-0006",
++        "invalid_ref_temporary.ax": "AX-MUT-0002",
++        "invalid_ref_two_mut_args.ax": "AX-BORROW-0003",
++        "invalid_ref_argument_order.ax": "AX-BORROW-0004",
++        "invalid_ref_nested_call_loan.ax": "AX-BORROW-0009",
++    }
++    for name, code in expected.items():
++        exact_diagnostic(name, code)
++    return expected
++
++
++def borrow_scope_and_argument_order() -> dict[str, Any]:
++    with tempfile.TemporaryDirectory() as directory:
++        scope = prove(fixture("ref_scope_release.ax"), Path(directory) / "scope")
++        order = prove(fixture("ref_argument_order.ax"), Path(directory) / "order")
++        nested = prove(fixture("ref_nested_call_release.ax"), Path(directory) / "nested")
++    require(scope["native_exit_code"] == 42, "borrow did not end at block boundary")
++    require(order["native_exit_code"] == 42, "left-to-right copied argument case failed")
++    require(nested["native_exit_code"] == 42, "inner mutable loan did not release before the next outer argument")
++    exact_diagnostic("invalid_ref_argument_order.ax", "AX-BORROW-0004")
