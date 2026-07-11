@@ -1,5 +1,5 @@
 name: AXIOM capability
-about: Propose one vertically complete language, compiler, tooling, benchmark, or standard-library capability.
+description: Propose one vertically complete language, compiler, tooling, benchmark, or standard-library capability.
 title: "[CAPABILITY] "
 labels:
   - enhancement
