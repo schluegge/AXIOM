@@ -8,16 +8,22 @@ on:
       - ".github/ISSUE_TEMPLATE/**"
       - ".github/pull_request_template.md"
       - ".github/workflows/v1-roadmap-contract.yml"
+      - "README.md"
+      - "V1_TRACKING.md"
       - "MVP_ROADMAP.md"
       - "AI_FIRST_MVP_CONTRACT.md"
+      - "ROADMAP_AMENDMENT_007.md"
   push:
     branches:
       - main
     paths:
       - "roadmap/**"
       - "tools/check_v1_roadmap.py"
+      - "README.md"
+      - "V1_TRACKING.md"
       - "MVP_ROADMAP.md"
       - "AI_FIRST_MVP_CONTRACT.md"
+      - "ROADMAP_AMENDMENT_007.md"
   issues:
     types: [opened, edited, closed, reopened, assigned, unassigned, labeled, unlabeled]
   workflow_dispatch:
