@@ -2,7 +2,7 @@
 
 Status: authoritative dependency evidence for M0  
 Applies to: issue #11  
-Recorded version: `jsonschema==4.25.1`
+Recorded validator version: `jsonschema==4.25.1`
 
 ## Resolved Context7 source
 
@@ -41,7 +41,7 @@ Captured contracts:
 
 - `Draft202012Validator.check_schema(schema)` validates the schema itself against
   the bundled Draft 2020-12 meta-schema and raises a schema error for an invalid
-  contract schema.
+  contract schema;
 - constructing `Draft202012Validator(schema)` pins validation behavior to Draft
   2020-12 rather than selecting a draft implicitly;
 - `iter_errors(instance)` performs lazy validation and allows AXIOM to report all
@@ -63,9 +63,21 @@ validation itself performs no network access.
 
 Classification: `CAPABILITY_PROVIDER`
 
-AXIOM reuses `jsonschema` rather than implementing JSON Schema. The direct
-proof dependency is pinned in `requirements-proof.txt`; the exact installed
-version and relevant transitive versions are recorded in Evidence.
+AXIOM reuses `jsonschema` rather than implementing JSON Schema. The complete
+resolved proof dependency closure is exactly pinned in `requirements-proof.txt`:
+
+```text
+attrs==26.1.0
+jsonschema==4.25.1
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==2026.6.3
+typing-extensions==4.16.0
+```
+
+The checker derives its dependency evidence from that file and fails when a pin
+is missing, duplicated, not installed, or does not match the installed version.
+The exact versions are also persisted in the GitHub Evidence artifact.
 
 ## Non-decisions
 
