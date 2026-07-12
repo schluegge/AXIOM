@@ -1,0 +1,111 @@
+{
+  "document_kind": "axiom.automated-review.gate-policy",
+  "schema_version": "0.1.0",
+  "protected_paths": [
+    ".github/workflows/deterministic-review.yml",
+    ".github/workflows/proof.yml",
+    ".github/workflows/v1-roadmap-contract.yml",
+    "agents/agent_b_aggregate_generated_checks.py",
+    "agents/agent_b_aggregate_layout_checks.py",
+    "agents/agent_b_aggregate_semantic_checks.py",
+    "agents/agent_b_arithmetic_checks.py",
+    "agents/agent_b_benchmark_contract_checks.py",
+    "agents/agent_b_benchmark_runner_checks.py",
+    "agents/agent_b_contract_checks.py",
+    "agents/agent_b_core_checks.py",
+    "agents/agent_b_lvalue_checks.py",
+    "agents/agent_b_reference_checks.py",
+    "agents/agent_b_review.py",
+    "agents/agent_b_review_gate_checks.py",
+    "agents/agent_b_support.py",
+    "agents/agent_b_trusted_task_authority_checks.py",
+    "benchmarks/contracts/0.1.0/contract.json",
+    "benchmarks/contracts/0.1.0/trusted-tasks.json",
+    "benchmarks/schemas/0.1.0/attempt.schema.json",
+    "benchmarks/schemas/0.1.0/bundle-manifest.schema.json",
+    "benchmarks/schemas/0.1.0/command-record.schema.json",
+    "benchmarks/schemas/0.1.0/conformance-report.schema.json",
+    "benchmarks/schemas/0.1.0/contract.schema.json",
+    "benchmarks/schemas/0.1.0/language-pack.schema.json",
+    "benchmarks/schemas/0.1.0/replay-report.schema.json",
+    "benchmarks/schemas/0.1.0/run.schema.json",
+    "benchmarks/schemas/0.1.0/suite.schema.json",
+    "benchmarks/schemas/0.1.0/task.schema.json",
+    "benchmarks/schemas/0.1.0/toolchains.schema.json",
+    "benchmarks/schemas/0.1.0/trace-event.schema.json",
+    "benchmarks/schemas/0.1.0/trusted-task-registry.schema.json",
+    "contracts/project.json",
+    "contracts/project.schema.json",
+    "requirements-proof.txt",
+    "review/contracts/0.1.0/gate-policy.schema.json",
+    "review/contracts/0.1.0/report.schema.json",
+    "review/policy/0.1.0/gate-policy.json",
+    "roadmap/v1.json",
+    "roadmap/v1.schema.json",
+    "run_repo_proof.py",
+    "tests/benchmark_test_repository.py",
+    "tests/test_aggregate_diagnostics.py",
+    "tests/test_aggregate_execution.py",
+    "tests/test_aggregate_layout.py",
+    "tests/test_benchmark_contract.py",
+    "tests/test_benchmark_replay_integrity.py",
+    "tests/test_benchmark_runner.py",
+    "tests/test_lvalue_mutation.py",
+    "tests/test_project_contract.py",
+    "tests/test_project_contract_dependencies.py",
+    "tests/test_references.py",
+    "tests/test_review_contract.py",
+    "tests/test_review_gate.py",
+    "tests/test_trusted_task_authority.py",
+    "tests/test_vertical.py",
+    "tools/check_benchmark_contract.py",
+    "tools/check_project_contract.py",
+    "tools/check_v1_roadmap.py",
+    "tools/replay_benchmark_conformance.py",
+    "tools/run_benchmark_conformance.py",
+    "tools/run_deterministic_review.py"
+  ],
+  "agent_b_registration_modules": [
+    "agents.agent_b_aggregate_generated_checks",
+    "agents.agent_b_aggregate_layout_checks",
+    "agents.agent_b_aggregate_semantic_checks",
+    "agents.agent_b_arithmetic_checks",
+    "agents.agent_b_benchmark_contract_checks",
+    "agents.agent_b_benchmark_runner_checks",
+    "agents.agent_b_contract_checks",
+    "agents.agent_b_core_checks",
+    "agents.agent_b_lvalue_checks",
+    "agents.agent_b_reference_checks",
+    "agents.agent_b_review_gate_checks",
+    "agents.agent_b_trusted_task_authority_checks"
+  ],
+  "workflow_rules": {
+    "default_permission_allowlist": {
+      "contents": "read"
+    },
+    "workflows": {
+      ".github/workflows/deterministic-review.yml": {
+        "permissions": {
+          "contents": "read"
+        }
+      },
+      ".github/workflows/proof.yml": {
+        "permissions": {
+          "contents": "read"
+        }
+      },
+      ".github/workflows/v1-roadmap-contract.yml": {
+        "permissions": {
+          "contents": "read",
+          "issues": "read"
+        }
+      }
+    }
+  },
+  "limits": {
+    "max_report_bytes": 1048576,
+    "max_summary_bytes": 262144,
+    "max_findings": 200,
+    "max_evidence_file_bytes": 1048576
+  }
+}

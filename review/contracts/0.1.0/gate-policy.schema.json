@@ -1,0 +1,80 @@
+{
+  "$id": "https://axiom.invalid/review/contracts/0.1.0/gate-policy.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "definitions": {
+    "permission_map": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z][a-z-]*$": {"enum": ["none", "read", "write"]}
+      },
+      "type": "object"
+    },
+    "repository_path": {
+      "minLength": 1,
+      "pattern": "^[^\\\\]+$",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "agent_b_registration_modules": {
+      "items": {"pattern": "^agents\\.agent_b_[a-z0-9_]+$", "type": "string"},
+      "minItems": 1,
+      "type": "array"
+    },
+    "document_kind": {"const": "axiom.automated-review.gate-policy"},
+    "limits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_evidence_file_bytes": {"minimum": 1024, "type": "integer"},
+        "max_findings": {"minimum": 1, "type": "integer"},
+        "max_report_bytes": {"minimum": 1024, "type": "integer"},
+        "max_summary_bytes": {"minimum": 1024, "type": "integer"}
+      },
+      "required": [
+        "max_report_bytes",
+        "max_summary_bytes",
+        "max_findings",
+        "max_evidence_file_bytes"
+      ],
+      "type": "object"
+    },
+    "protected_paths": {
+      "items": {"$ref": "#/definitions/repository_path"},
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {"const": "0.1.0"},
+    "workflow_rules": {
+      "additionalProperties": false,
+      "properties": {
+        "default_permission_allowlist": {"$ref": "#/definitions/permission_map"},
+        "workflows": {
+          "additionalProperties": false,
+          "patternProperties": {
+            "^\\.github/workflows/[A-Za-z0-9._-]+\\.ya?ml$": {
+              "additionalProperties": false,
+              "properties": {
+                "permissions": {"$ref": "#/definitions/permission_map"}
+              },
+              "required": ["permissions"],
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": ["default_permission_allowlist", "workflows"],
+      "type": "object"
+    }
+  },
+  "required": [
+    "document_kind",
+    "schema_version",
+    "protected_paths",
+    "agent_b_registration_modules",
+    "workflow_rules",
+    "limits"
+  ],
+  "type": "object"
+}

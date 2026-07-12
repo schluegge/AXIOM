@@ -23,10 +23,10 @@ contract checker.
 
 The current PR proof executes:
 
-- project contract: 8 current capabilities, 14 deferred features, 0 findings;
+- project contract: 10 current capabilities, 14 deferred features, 0 findings;
 - benchmark contract: 8 indexed schemas, 0 findings;
-- unit/integration suite: 112/112;
-- Agent B release-blocking checks: 75/75;
+- unit/integration suite: 156/156;
+- Agent B release-blocking checks: 89/89;
 - interpreter/native differential corpus: 38/38;
 - stable invalid fixture matrix: 52/52;
 - deterministic repository Evidence ZIP.
@@ -96,6 +96,21 @@ The proof establishes:
 The integrated fixture has four language keys but one synthetic byte-level
 behavior. It proves runner mechanics only. It is not a language benchmark.
 
+## Implemented automated review layer
+
+Capability `review.report-contract-0.1` implements the strict versioned review
+report contract with offline validation, deterministic canonicalization,
+neutralized Markdown rendering, and advisory-only AI authority.
+
+Capability `review.deterministic-gate-0.1` implements the deterministic
+pull-request review gate: recomputed project, benchmark, and roadmap
+contracts; exact-head proof-evidence re-hashing with insertion and drift
+rejection; a versioned protected baseline for tests, Agent B registrations,
+proof stages, schemas, and workflows; workflow permission, trigger, and
+action-pinning laws; bounded fail-closed reporting; and a read-only
+`pull_request` workflow. Comment publication, cross-workflow staleness
+binding, and any AI reviewer remain unimplemented and unclaimed.
+
 ## Supported trust boundary
 
 The supported authority-enforcing entry points are the exports from the
@@ -143,6 +158,9 @@ follow-up work before broadening language/native claims.
 
 ## Still unproven
 
+- PR review summary publication, exact-head staleness binding across
+  workflows, an advisory AI reviewer, and enforced merge policy (issues #35
+  through #41);
 - frozen AXIOM-Bench `0.1.0` suite;
 - equal-spec language packs and real AXIOM/Rust/Zig/Go task corpus;
 - frozen comparison toolchains and equivalence reviews;

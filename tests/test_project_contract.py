@@ -33,11 +33,13 @@ class ProjectContractTests(unittest.TestCase):
         result = check_project_contract(ROOT, CONTRACT, SCHEMA)
         self.assertEqual(result["status"], "passed", render_text(result))
         self.assertEqual(result["exit_code"], 0)
-        self.assertEqual(result["counts"]["current_features"], 9)
+        self.assertEqual(result["counts"]["current_features"], 10)
         self.assertEqual(result["counts"]["findings"], 0)
         features = {item["id"]: item for item in self.load_contract()["features"]}
         self.assertEqual(features["review.report-contract-0.1"]["status"], "implemented")
         self.assertEqual(features["review.report-contract-0.1"]["proven_targets"], [])
+        self.assertEqual(features["review.deterministic-gate-0.1"]["status"], "implemented")
+        self.assertEqual(features["review.deterministic-gate-0.1"]["proven_targets"], [])
         self.assertEqual(features["benchmark.trusted-conformance-0.1"]["status"], "implemented")
         self.assertEqual(features["benchmark.trusted-conformance-0.1"]["proven_targets"], [])
 

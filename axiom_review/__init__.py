@@ -8,6 +8,18 @@ from .contract import (
     semantic_sha256,
     validate_report,
 )
+from .gate import (
+    EXIT_BLOCKED,
+    EXIT_INTERNAL,
+    EXIT_PASSED,
+    EXIT_USAGE,
+    GateInputError,
+    GateInternalError,
+    GateResult,
+    load_event,
+    load_gate_policy,
+    run_deterministic_review,
+)
 
 __all__ = [
     "SCHEMA_VERSION",
@@ -18,4 +30,14 @@ __all__ = [
     "render_markdown",
     "semantic_sha256",
     "validate_report",
+    "EXIT_BLOCKED",
+    "EXIT_INTERNAL",
+    "EXIT_PASSED",
+    "EXIT_USAGE",
+    "GateInputError",
+    "GateInternalError",
+    "GateResult",
+    "load_event",
+    "load_gate_policy",
+    "run_deterministic_review",
 ]
