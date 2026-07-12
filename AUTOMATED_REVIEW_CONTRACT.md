@@ -1,0 +1,58 @@
+# AXIOM Automated Review Report Contract 0.1.0
+
+Status: implemented contract only. This document does not claim an operational workflow, AI provider, PR publisher, branch policy, or merge authority.
+
+## Authority boundary
+
+The machine-readable schema at `review/contracts/0.1.0/report.schema.json` and the semantic validator in `axiom_review/contract.py` jointly define the 0.1.0 report contract. Validation is offline: external schema references, network access, model calls, and provider-specific behavior are forbidden.
+
+A deterministic reviewer may emit blocking or advisory findings. An `advisory_ai` reviewer may emit advisory findings only. Severity describes importance but never grants authority. Model output cannot approve, reject, modify, publish, or merge code.
+
+## Required identity and freshness fields
+
+Every report identifies its report kind and schema version, repository, pull-request number, base SHA, exact reviewed head SHA, generation time, reviewer class, status, checks, findings, known-unreviewed sections, unavailable sections, and semantic digest.
+
+A report with an absent or malformed exact head SHA is invalid. Later roadmap issues define live staleness checks against GitHub; this contract only preserves the identity required for those checks.
+
+## Findings and checks
+
+Each finding has a stable code, title, explanation, severity, authority, evidence path, optional affected file/range, and remediation. A blocking finding requires non-empty evidence. Each check records its input digest, observed conclusion, and optional evidence path.
+
+The status enum is `passed`, `failed`, `unavailable`, or `stale`. A report marked `passed` requires at least one recorded passing check and is invalid when it contains blocking findings, any non-passing check, or unavailable sections. Rendering therefore cannot convert absent, unavailable, or failed execution into a pass.
+
+## Canonicalization and rendering
+
+`canonical_json` emits UTF-8 JSON with sorted keys and one final newline. `semantic_sha256` hashes compact sorted-key JSON after removing only the digest field itself. Array order remains semantically meaningful.
+
+`validate_report` is the low-level offline validator for an explicitly supplied schema. It rejects non-local `$ref` and `$dynamicRef` targets before constructing the Draft 2020-12 validator. A local reference that cannot be resolved is converted into stable schema finding `AX-REV-CONTRACT-1002` rather than escaping as a library exception.
+
+`render_markdown` accepts only the report. It loads the packaged schema from the immutable versioned repository path, runs the complete schema and semantic validator, and raises `InvalidReviewReport` when the schema cannot be loaded or any finding exists. A caller cannot substitute a permissive schema and render an invalid report as `PASSED`.
+
+All report-controlled scalar text is treated as untrusted data during rendering. Newlines are flattened and Markdown control characters are escaped before insertion, so titles, explanations, remediation text, evidence paths, repository names, and identifiers cannot create forged headings, links, status lines, code spans, or review sections.
+
+`load_and_validate_report` accepts an explicit trusted repository root so repository tools can validate a report against that repository's versioned schema. Missing, malformed, or non-object JSON is attributed to the exact failing file.
+
+## Versioning and migration policy
+
+Contract versions use semantic versioning.
+
+- Patch releases may clarify prose or add validator behavior that rejects data already forbidden by the same schema and laws. They must not change valid report meaning.
+- Minor releases may add optional fields or enum values. Producers must opt into the new version explicitly; consumers must reject unknown schema versions.
+- Major releases may remove or rename fields, change required fields, or alter meaning.
+
+Every version has an immutable versioned schema path. Existing schemas are not edited to simulate migration. A migration requires a pure, offline transformation with source-version validation, target-version validation, deterministic output, and tests preserving authority, reviewed-head identity, evidence references, and status meaning. No migration may convert `unavailable`, `stale`, or failed input into `passed` without new deterministic evidence.
+
+## Stable validator findings
+
+- `AX-REV-CONTRACT-0001`: required report or schema JSON file is missing
+- `AX-REV-CONTRACT-0002`: report or schema JSON is malformed
+- `AX-REV-CONTRACT-0003`: report or schema JSON root is not an object
+- `AX-REV-CONTRACT-1001`: external schema reference
+- `AX-REV-CONTRACT-1002`: invalid Draft 2020-12 schema or unresolvable local schema reference
+- `AX-REV-CONTRACT-1003`: report schema violation, including unknown fields and invalid enums
+- `AX-REV-CONTRACT-2001`: AI finding attempted blocking authority
+- `AX-REV-CONTRACT-2002`: non-deterministic blocking authority
+- `AX-REV-CONTRACT-2003`: blocking finding lacks evidence
+- `AX-REV-CONTRACT-2004`: false pass over absent checks, blockers, non-passing checks, or unavailable sections
+- `AX-REV-CONTRACT-2005`: semantic digest mismatch
+- `AX-REV-CONTRACT-2006`: passing report lacks exact reviewed-head identity
