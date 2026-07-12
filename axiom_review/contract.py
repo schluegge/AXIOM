@@ -10,6 +10,7 @@ from typing import Any, Iterable
 
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
+from referencing.exceptions import Unresolvable
 
 SCHEMA_VERSION = "0.1.0"
 SCHEMA_PATH = Path("review/contracts/0.1.0/report.schema.json")
@@ -17,7 +18,7 @@ _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 _RFC3339_DATETIME = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
 )
-_MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+\-.!|>])")
+_MARKDOWN_SPECIAL = re.compile(r"([\`*_{}\[\]()#+\-.!|>])")
 
 
 @dataclass(frozen=True, order=True)
@@ -81,6 +82,17 @@ def _walk_refs(value: Any, path: str = "$") -> Iterable[tuple[str, str]]:
             yield from _walk_refs(child, f"{path}[{index}]")
 
 
+def _contains_unresolvable(error: BaseException) -> bool:
+    current: BaseException | None = error
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        if isinstance(current, Unresolvable):
+            return True
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def _is_rfc3339_datetime(value: str) -> bool:
     if _RFC3339_DATETIME.fullmatch(value) is None:
         return False
@@ -114,7 +126,13 @@ def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Find
         return [Finding("AX-REV-CONTRACT-1002", "schema", f"invalid Draft 2020-12 schema: {error.message}")]
 
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
-    for error in sorted(validator.iter_errors(report), key=lambda item: (item.json_path, item.message)):
+    try:
+        validation_errors = sorted(validator.iter_errors(report), key=lambda item: (item.json_path, item.message))
+    except Exception as error:
+        if _contains_unresolvable(error):
+            return [Finding("AX-REV-CONTRACT-1002", "schema", "local schema reference could not be resolved")]
+        raise
+    for error in validation_errors:
         findings.append(
             Finding(
                 "AX-REV-CONTRACT-1003",
@@ -165,13 +183,14 @@ def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Find
             )
 
     has_blocker = any(item["authority"] == "blocking" for item in report_findings)
+    has_no_checks = not report["checks"]
     has_nonpassing_check = any(item["conclusion"] != "passed" for item in report["checks"])
-    if status == "passed" and (has_blocker or has_nonpassing_check or report["unavailable"]):
+    if status == "passed" and (has_blocker or has_no_checks or has_nonpassing_check or report["unavailable"]):
         findings.append(
             Finding(
                 "AX-REV-CONTRACT-2004",
                 "$.status",
-                "passed report cannot contain blocking findings, non-passing checks, or unavailable sections",
+                "passed report requires at least one passing check and cannot contain blockers, non-passing checks, or unavailable sections",
             )
         )
     if status == "passed" and len(report["reviewed_head_sha"]) != 40:
