@@ -1,6 +1,7 @@
 from .contract import (
     SCHEMA_VERSION,
     Finding,
+    InvalidReviewReport,
     canonical_json,
     load_and_validate_report,
     render_markdown,
@@ -11,6 +12,7 @@ from .contract import (
 __all__ = [
     "SCHEMA_VERSION",
     "Finding",
+    "InvalidReviewReport",
     "canonical_json",
     "load_and_validate_report",
     "render_markdown",
