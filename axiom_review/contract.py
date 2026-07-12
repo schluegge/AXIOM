@@ -17,6 +17,7 @@ _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 _RFC3339_DATETIME = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
 )
+_MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+\-.!|>])")
 
 
 @dataclass(frozen=True, order=True)
@@ -89,6 +90,13 @@ def _is_rfc3339_datetime(value: str) -> bool:
     except ValueError:
         return False
     return parsed.tzinfo is not None
+
+
+def _markdown_text(value: Any) -> str:
+    """Flatten and escape untrusted text so it cannot create Markdown structure."""
+
+    flattened = " ".join(str(value).split())
+    return _MARKDOWN_SPECIAL.sub(r"\\\1", flattened)
 
 
 def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Finding]:
@@ -217,12 +225,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         "## AXIOM automated review",
         "",
         f"- Status: **{status.upper()}**",
-        f"- Reviewer class: `{report['reviewer_class']}`",
-        f"- Repository: `{report['repository']}`",
+        f"- Reviewer class: `{_markdown_text(report['reviewer_class'])}`",
+        f"- Repository: `{_markdown_text(report['repository'])}`",
         f"- Pull request: `#{report['pull_request_number']}`",
-        f"- Base SHA: `{report['base_sha']}`",
-        f"- Reviewed head SHA: `{report['reviewed_head_sha']}`",
-        f"- Semantic digest: `{report['semantic_sha256']}`",
+        f"- Base SHA: `{_markdown_text(report['base_sha'])}`",
+        f"- Reviewed head SHA: `{_markdown_text(report['reviewed_head_sha'])}`",
+        f"- Semantic digest: `{_markdown_text(report['semantic_sha256'])}`",
         "",
         "### Findings",
     ]
@@ -232,10 +240,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         for item in sorted(report["findings"], key=lambda value: (value["authority"], value["severity"], value["code"], value["title"])):
             lines.extend(
                 [
-                    f"- **{item['code']}** [{item['authority']}/{item['severity']}] {item['title']}",
-                    f"  - {item['explanation']}",
-                    f"  - Evidence: `{item['evidence_path'] or 'none'}`",
-                    f"  - Remediation: {item['remediation']}",
+                    f"- **{_markdown_text(item['code'])}** [{_markdown_text(item['authority'])}/{_markdown_text(item['severity'])}] {_markdown_text(item['title'])}",
+                    f"  - {_markdown_text(item['explanation'])}",
+                    f"  - Evidence: `{_markdown_text(item['evidence_path'] or 'none')}`",
+                    f"  - Remediation: {_markdown_text(item['remediation'])}",
                 ]
             )
     for heading, key in (("Known unreviewed", "known_unreviewed"), ("Unavailable", "unavailable")):
@@ -245,5 +253,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             lines.append("None.")
         else:
             for item in sorted(sections, key=lambda value: value["code"]):
-                lines.append(f"- **{item['code']}** {item['title']}: {item['explanation']}")
+                lines.append(
+                    f"- **{_markdown_text(item['code'])}** {_markdown_text(item['title'])}: {_markdown_text(item['explanation'])}"
+                )
     return "\n".join(lines) + "\n"
