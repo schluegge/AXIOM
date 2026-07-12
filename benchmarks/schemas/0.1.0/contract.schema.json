@@ -13,6 +13,7 @@
     "specification_path",
     "preregistration_path",
     "source_evidence_path",
+    "trusted_task_registry_path",
     "schema_paths",
     "required_lanes",
     "required_conformance_adapters",
@@ -30,10 +31,11 @@
     "specification_path": {"$ref": "#/$defs/path"},
     "preregistration_path": {"$ref": "#/$defs/path"},
     "source_evidence_path": {"$ref": "#/$defs/path"},
+    "trusted_task_registry_path": {"const": "benchmarks/contracts/0.1.0/trusted-tasks.json"},
     "schema_paths": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["contract", "suite", "task", "language_pack", "toolchains", "attempt", "run", "trace_event"],
+      "required": ["contract", "suite", "task", "language_pack", "toolchains", "attempt", "run", "trace_event", "trusted_task_registry"],
       "properties": {
         "contract": {"$ref": "#/$defs/path"},
         "suite": {"$ref": "#/$defs/path"},
@@ -42,7 +44,8 @@
         "toolchains": {"$ref": "#/$defs/path"},
         "attempt": {"$ref": "#/$defs/path"},
         "run": {"$ref": "#/$defs/path"},
-        "trace_event": {"$ref": "#/$defs/path"}
+        "trace_event": {"$ref": "#/$defs/path"},
+        "trusted_task_registry": {"const": "benchmarks/schemas/0.1.0/trusted-task-registry.schema.json"}
       }
     },
     "required_lanes": {
