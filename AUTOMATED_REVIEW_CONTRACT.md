@@ -28,6 +28,8 @@ The status enum is `passed`, `failed`, `unavailable`, or `stale`. A report marke
 
 `render_markdown` accepts only the report. It loads the packaged schema from the immutable versioned repository path, runs the complete schema and semantic validator, and raises `InvalidReviewReport` when the schema cannot be loaded or any finding exists. A caller cannot substitute a permissive schema and render an invalid report as `PASSED`.
 
+All report-controlled scalar text is treated as untrusted data during rendering. Newlines are flattened and Markdown control characters are escaped before insertion, so titles, explanations, remediation text, evidence paths, repository names, and identifiers cannot create forged headings, links, status lines, code spans, or review sections.
+
 `load_and_validate_report` accepts an explicit trusted repository root so repository tools can validate a report against that repository's versioned schema. Missing, malformed, or non-object JSON is attributed to the exact failing file.
 
 ## Versioning and migration policy
