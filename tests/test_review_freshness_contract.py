@@ -19,15 +19,23 @@ BASE = "b" * 40
 DIGEST = "sha256:" + "c" * 64
 
 
-def source(source_id: str, *, head: str = CURRENT, run_id: int = 100) -> SourceResult:
+def source(
+    source_id: str,
+    *,
+    head: str = CURRENT,
+    run_id: int = 100,
+    conclusion: str = "passed",
+    artifact_name: str | None = None,
+    artifact_digest: str | None = DIGEST,
+) -> SourceResult:
     return SourceResult(
         source_id=source_id,
-        conclusion="passed",
+        conclusion=conclusion,
         reviewed_head_sha=head,
         run_id=run_id,
         run_attempt=1,
-        artifact_name=f"{source_id}.zip",
-        artifact_digest=DIGEST,
+        artifact_name=artifact_name if artifact_name is not None else f"{source_id}.zip",
+        artifact_digest=artifact_digest,
     )
 
 
@@ -74,6 +82,28 @@ class FreshnessEnvelopeContractTests(unittest.TestCase):
             {item.code for item in validate_freshness_envelope(envelope)},
         )
 
+    def test_no_artifact_source_reaches_semantic_validation(self) -> None:
+        envelope = build_freshness_envelope(
+            repository="schluegge/AXIOM",
+            pull_request_number=44,
+            base_sha=BASE,
+            current_head_sha=CURRENT,
+            publisher_run_id=200,
+            publisher_run_attempt=1,
+            sources=[
+                source(
+                    "axiom-proof",
+                    conclusion="missing",
+                    artifact_name=None,
+                    artifact_digest=None,
+                )
+            ],
+        )
+        codes = {item.code for item in validate_freshness_envelope(envelope)}
+        self.assertIn("AX-REV-FRESH-0104", codes)
+        self.assertIn("AX-REV-FRESH-0105", codes)
+        self.assertNotIn("AX-REV-FRESH-CONTRACT-1002", codes)
+
     def test_markdown_exposes_exact_execution_identity(self) -> None:
         markdown = render_freshness_markdown(self.envelope())
         self.assertIn(f"Current head SHA: `{CURRENT}`", markdown)
@@ -81,6 +111,21 @@ class FreshnessEnvelopeContractTests(unittest.TestCase):
         self.assertIn("axiom-proof", markdown)
         self.assertIn("`101/1`", markdown)
         self.assertIn(DIGEST, markdown)
+
+    def test_markdown_backticks_cannot_escape_code_span(self) -> None:
+        envelope = build_freshness_envelope(
+            repository="owner`name/repo",
+            pull_request_number=44,
+            base_sha=BASE,
+            current_head_sha=CURRENT,
+            publisher_run_id=200,
+            publisher_run_attempt=1,
+            sources=[source("axiom-proof", artifact_name="proof`name.zip")],
+        )
+        markdown = render_freshness_markdown(envelope)
+        self.assertIn("``owner`name/repo``", markdown)
+        self.assertIn("``proof`name.zip``", markdown)
+        self.assertNotIn("`owner\\`name/repo`", markdown)
 
     def test_workflow_writer_binds_proof_and_gate_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
