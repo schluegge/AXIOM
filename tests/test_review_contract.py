@@ -103,6 +103,12 @@ class ReviewContractTests(unittest.TestCase):
         report["semantic_sha256"] = semantic_sha256(report)
         self.assert_code(report, "AX-REV-CONTRACT-1003")
 
+    def test_invalid_generated_at_fails_without_optional_format_dependencies(self) -> None:
+        report = valid_report()
+        report["generated_at"] = "not-a-time"
+        report["semantic_sha256"] = semantic_sha256(report)
+        self.assert_code(report, "AX-REV-CONTRACT-1003")
+
     def test_empty_blocking_evidence_fails(self) -> None:
         report = valid_report()
         report["status"] = "failed"
@@ -128,6 +134,14 @@ class ReviewContractTests(unittest.TestCase):
         ]
         report["semantic_sha256"] = semantic_sha256(report)
         self.assert_code(report, "AX-REV-CONTRACT-2004")
+
+    def test_passed_report_rejects_every_nonpassing_check_conclusion(self) -> None:
+        for conclusion in ("failed", "missing", "cancelled", "skipped", "unavailable", "stale"):
+            with self.subTest(conclusion=conclusion):
+                report = valid_report()
+                report["checks"][0]["conclusion"] = conclusion
+                report["semantic_sha256"] = semantic_sha256(report)
+                self.assert_code(report, "AX-REV-CONTRACT-2004")
 
     def test_semantic_digest_detects_meaning_change(self) -> None:
         report = valid_report()
