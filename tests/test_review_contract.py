@@ -91,6 +91,12 @@ class ReviewContractTests(unittest.TestCase):
         findings = validate_report(valid_report(), schema)
         self.assertIn("AX-REV-CONTRACT-1001", {finding.code for finding in findings})
 
+    def test_unresolved_local_schema_reference_returns_stable_finding(self) -> None:
+        schema = copy.deepcopy(SCHEMA)
+        schema["properties"]["repository"] = {"$ref": "#/definitions/missing"}
+        findings = validate_report(valid_report(), schema)
+        self.assertEqual([finding.code for finding in findings], ["AX-REV-CONTRACT-1002"])
+
     def test_invalid_schema_json_is_attributed_to_schema_path(self) -> None:
         with tempfile.TemporaryDirectory(prefix="axiom-review-contract-") as directory:
             root = Path(directory)
@@ -185,6 +191,12 @@ class ReviewContractTests(unittest.TestCase):
         self.assert_code(report, "AX-REV-CONTRACT-2004")
         with self.assertRaisesRegex(ValueError, "AX-REV-CONTRACT-2004"):
             render_markdown(report)
+
+    def test_passed_report_requires_at_least_one_check(self) -> None:
+        report = valid_report()
+        report["checks"] = []
+        report["semantic_sha256"] = semantic_sha256(report)
+        self.assert_code(report, "AX-REV-CONTRACT-2004")
 
     def test_passed_report_rejects_every_nonpassing_check_conclusion(self) -> None:
         for conclusion in ("failed", "missing", "cancelled", "skipped", "unavailable", "stale"):
