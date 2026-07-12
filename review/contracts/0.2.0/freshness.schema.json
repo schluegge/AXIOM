@@ -6,8 +6,8 @@
     "source": {
       "additionalProperties": false,
       "properties": {
-        "artifact_digest": {"pattern": "^sha256:[0-9a-f]{64}$", "type": "string"},
-        "artifact_name": {"minLength": 1, "pattern": "^[^/\\\\]+$", "type": "string"},
+        "artifact_digest": {"anyOf": [{"pattern": "^sha256:[0-9a-f]{64}$", "type": "string"}, {"type": "null"}]},
+        "artifact_name": {"anyOf": [{"minLength": 1, "pattern": "^[^/\\\\]+$", "type": "string"}, {"type": "null"}]},
         "conclusion": {"enum": ["passed", "failed", "missing", "pending", "cancelled", "skipped", "unavailable", "stale"]},
         "reviewed_head_sha": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
         "run_attempt": {"minimum": 1, "type": "integer"},
