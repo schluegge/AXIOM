@@ -63,6 +63,28 @@ class ReviewContractTests(unittest.TestCase):
         self.assertEqual(render_markdown(report), render_markdown(copy.deepcopy(report)))
         self.assertIn("Status: **PASSED**", render_markdown(report))
 
+    def test_markdown_rendering_neutralizes_untrusted_structure(self) -> None:
+        report = valid_report()
+        report["status"] = "failed"
+        report["findings"] = [
+            {
+                "code": "AX-REV-FIXTURE-MARKDOWN",
+                "title": "Injected\n## Fake status",
+                "explanation": "line one\n- Status: **PASSED**",
+                "severity": "medium",
+                "authority": "advisory",
+                "evidence_path": "evidence/review/model.md`\n## Forged section",
+                "affected_location": None,
+                "remediation": "Do not trust [links](https://example.invalid).",
+            }
+        ]
+        report["semantic_sha256"] = semantic_sha256(report)
+        rendered = render_markdown(report)
+        self.assertNotIn("\n## Fake status", rendered)
+        self.assertNotIn("\n## Forged section", rendered)
+        self.assertNotIn("\n- Status: **PASSED**", rendered)
+        self.assertNotIn("](https://example.invalid)", rendered)
+
     def test_external_dynamic_schema_reference_fails(self) -> None:
         schema = copy.deepcopy(SCHEMA)
         schema["properties"]["repository"] = {"$dynamicRef": "https://example.invalid/review.schema.json"}
