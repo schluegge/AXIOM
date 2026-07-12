@@ -19,6 +19,7 @@ _RFC3339_DATETIME = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
 )
 _MARKDOWN_SPECIAL = re.compile(r"([\`*_{}\[\]()#+\-.!|>])")
+_BACKTICK_RUN = re.compile(r"`+")
 
 
 @dataclass(frozen=True, order=True)
@@ -104,11 +105,25 @@ def _is_rfc3339_datetime(value: str) -> bool:
     return parsed.tzinfo is not None
 
 
+def _flatten(value: Any) -> str:
+    return " ".join(str(value).split())
+
+
 def _markdown_text(value: Any) -> str:
     """Flatten and escape untrusted text so it cannot create Markdown structure."""
 
-    flattened = " ".join(str(value).split())
-    return _MARKDOWN_SPECIAL.sub(r"\\\1", flattened)
+    return _MARKDOWN_SPECIAL.sub(r"\\\1", _flatten(value))
+
+
+def _markdown_code(value: Any) -> str:
+    """Render untrusted scalar text inside a non-escapable CommonMark code span."""
+
+    flattened = _flatten(value)
+    longest = max((len(match.group(0)) for match in _BACKTICK_RUN.finditer(flattened)), default=0)
+    fence = "`" * (longest + 1)
+    if flattened.startswith(("`", " ")) or flattened.endswith(("`", " ")):
+        flattened = f" {flattened} "
+    return f"{fence}{flattened}{fence}"
 
 
 def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Finding]:
@@ -244,12 +259,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         "## AXIOM automated review",
         "",
         f"- Status: **{status.upper()}**",
-        f"- Reviewer class: `{_markdown_text(report['reviewer_class'])}`",
-        f"- Repository: `{_markdown_text(report['repository'])}`",
+        f"- Reviewer class: {_markdown_code(report['reviewer_class'])}",
+        f"- Repository: {_markdown_code(report['repository'])}",
         f"- Pull request: `#{report['pull_request_number']}`",
-        f"- Base SHA: `{_markdown_text(report['base_sha'])}`",
-        f"- Reviewed head SHA: `{_markdown_text(report['reviewed_head_sha'])}`",
-        f"- Semantic digest: `{_markdown_text(report['semantic_sha256'])}`",
+        f"- Base SHA: {_markdown_code(report['base_sha'])}",
+        f"- Reviewed head SHA: {_markdown_code(report['reviewed_head_sha'])}",
+        f"- Semantic digest: {_markdown_code(report['semantic_sha256'])}",
         "",
         "### Findings",
     ]
@@ -261,7 +276,7 @@ def render_markdown(report: dict[str, Any]) -> str:
                 [
                     f"- **{_markdown_text(item['code'])}** [{_markdown_text(item['authority'])}/{_markdown_text(item['severity'])}] {_markdown_text(item['title'])}",
                     f"  - {_markdown_text(item['explanation'])}",
-                    f"  - Evidence: `{_markdown_text(item['evidence_path'] or 'none')}`",
+                    f"  - Evidence: {_markdown_code(item['evidence_path'] or 'none')}",
                     f"  - Remediation: {_markdown_text(item['remediation'])}",
                 ]
             )
