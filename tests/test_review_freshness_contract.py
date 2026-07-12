@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from axiom_review.freshness import SourceResult
 from axiom_review.freshness_contract import (
@@ -8,6 +11,7 @@ from axiom_review.freshness_contract import (
     render_freshness_markdown,
     validate_freshness_envelope,
 )
+from tools.run_deterministic_review import write_freshness_artifacts
 
 
 CURRENT = "a" * 40
@@ -77,6 +81,32 @@ class FreshnessEnvelopeContractTests(unittest.TestCase):
         self.assertIn("axiom-proof", markdown)
         self.assertIn("`101/1`", markdown)
         self.assertIn(DIGEST, markdown)
+
+    def test_workflow_writer_binds_proof_and_gate_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            report = output / "review-report.json"
+            report.write_text('{"status":"passed"}\n', encoding="utf-8")
+            envelope_path, markdown_path = write_freshness_artifacts(
+                output_dir=output,
+                report_path=report,
+                repository="schluegge/AXIOM",
+                pull_request_number=44,
+                base_sha=BASE,
+                head_sha=CURRENT,
+                workflow_run_id=300,
+                workflow_run_attempt=2,
+                proof_artifact_name="axiom-repo-proof-300.zip",
+                proof_artifact_digest=DIGEST,
+            )
+            envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+            self.assertEqual(validate_freshness_envelope(envelope), [])
+            self.assertEqual(
+                [item["source_id"] for item in envelope["sources"]],
+                ["axiom-proof", "deterministic-review"],
+            )
+            self.assertEqual(envelope["publisher_run_id"], 300)
+            self.assertIn(CURRENT, markdown_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
