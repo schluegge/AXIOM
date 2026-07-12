@@ -67,14 +67,17 @@ jobs:
           PY
 
       - name: Run the deterministic review gate
+        env:
+          PROOF_ARTIFACT_NAME: ${{ steps.proof-artifact.outputs.name }}
+          PROOF_ARTIFACT_DIGEST: ${{ steps.proof-artifact.outputs.digest }}
         run: >
           python3 tools/run_deterministic_review.py
           --event "$GITHUB_EVENT_PATH"
           --output evidence/deterministic-review
           --workflow-run-id "${{ github.run_id }}"
           --workflow-run-attempt "${{ github.run_attempt }}"
-          --proof-artifact-name "${{ steps.proof-artifact.outputs.name }}"
-          --proof-artifact-digest "${{ steps.proof-artifact.outputs.digest }}"
+          --proof-artifact-name "$PROOF_ARTIFACT_NAME"
+          --proof-artifact-digest "$PROOF_ARTIFACT_DIGEST"
 
       - name: Upload deterministic review artifacts
         if: always()
