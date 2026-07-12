@@ -25,8 +25,8 @@ The current PR proof executes:
 
 - project contract: 10 current capabilities, 14 deferred features, 0 findings;
 - benchmark contract: 8 indexed schemas, 0 findings;
-- unit/integration suite: 159/159;
-- Agent B release-blocking checks: 91/91;
+- unit/integration suite: 179/179;
+- Agent B release-blocking checks: 99/99;
 - interpreter/native differential corpus: 38/38;
 - stable invalid fixture matrix: 52/52;
 - deterministic repository Evidence ZIP.
