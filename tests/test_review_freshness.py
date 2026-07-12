@@ -22,6 +22,7 @@ def source(
     head_sha: str = CURRENT,
     run_id: int = 100,
     run_attempt: int = 1,
+    artifact_name: str | None = None,
     artifact_digest: str | None = DIGEST,
 ) -> SourceResult:
     return SourceResult(
@@ -30,7 +31,7 @@ def source(
         reviewed_head_sha=head_sha,
         run_id=run_id,
         run_attempt=run_attempt,
-        artifact_name=f"{source_id}.zip" if artifact_digest is not None else None,
+        artifact_name=artifact_name if artifact_name is not None else f"{source_id}.zip",
         artifact_digest=artifact_digest,
     )
 
@@ -81,6 +82,13 @@ class FreshnessValidationTests(unittest.TestCase):
         findings = validate_freshness(
             CURRENT,
             [source("axiom-proof", artifact_digest=None)],
+        )
+        self.assertIn("AX-REV-FRESH-0105", self.codes(findings))
+
+    def test_missing_artifact_name_fails_independently(self) -> None:
+        findings = validate_freshness(
+            CURRENT,
+            [source("axiom-proof", artifact_name="", artifact_digest=DIGEST)],
         )
         self.assertIn("AX-REV-FRESH-0105", self.codes(findings))
 
