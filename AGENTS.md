@@ -135,7 +135,8 @@ For review automation work also read:
   `pull_request_target` checkout or execution is forbidden.
 - Third-party Actions remain pinned by immutable full-length commit SHA.
 - Protected tests, Agent B registrations, proof stages, schemas, and
-  workflows may change only through an explicit gate-policy edit.
+  workflows may be removed only through an explicit gate-policy edit;
+  content weakening remains Agent B and adversarial-review scope.
 - Review automation may not weaken tests, proof, contracts, permissions, or
   branch policy to obtain a green result.
 - The gate never replaces an existing output directory and never publishes
