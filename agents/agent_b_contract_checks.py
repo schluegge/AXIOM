@@ -45,13 +45,17 @@ def _require_code(result: dict[str, Any], code: str) -> str:
 def _valid_contract(root: Path) -> dict[str, Any]:
     result = check_project_contract(root)
     require(result["status"] == "passed", f"valid repository contract failed: {result}")
-    require(result["counts"]["current_features"] == 9, "unexpected current feature count")
+    require(result["counts"]["current_features"] == 10, "unexpected current feature count")
     require(result["counts"]["findings"] == 0, "valid contract contains findings")
     features = {item["id"]: item for item in _load(root / "contracts" / "project.json")["features"]}
     review_contract = features.get("review.report-contract-0.1")
     require(review_contract is not None, "review report contract capability is missing")
     require(review_contract["status"] == "implemented", "review report contract status is overstated")
     require(review_contract["proven_targets"] == [], "review report contract claims a language target")
+    review_gate = features.get("review.deterministic-gate-0.1")
+    require(review_gate is not None, "deterministic review gate capability is missing")
+    require(review_gate["status"] == "implemented", "deterministic review gate status is overstated")
+    require(review_gate["proven_targets"] == [], "deterministic review gate claims a language target")
     trusted = features.get("benchmark.trusted-conformance-0.1")
     require(trusted is not None, "trusted conformance capability is missing")
     require(trusted["status"] == "implemented", "trusted conformance status is overstated")
@@ -61,6 +65,7 @@ def _valid_contract(root: Path) -> dict[str, Any]:
         "deferred": result["counts"]["deferred_features"],
         "validator": result["validator"],
         "review_contract_status": review_contract["status"],
+        "review_gate_status": review_gate["status"],
         "trusted_conformance_status": trusted["status"],
     }
 

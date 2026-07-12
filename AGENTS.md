@@ -26,7 +26,12 @@ Implemented:
   validation, contamination/fairness/trust laws;
 - `benchmark.trusted-conformance-0.1` — trusted reference and seeded-wrong
   execution, bounded commands, deterministic bundles, and subprocess-free
-  replay.
+  replay;
+- `review.report-contract-0.1` — versioned automated-review report contract
+  with offline validation and neutralized rendering;
+- `review.deterministic-gate-0.1` — deterministic pull-request review gate
+  with exact-head proof verification, protected baseline, and workflow
+  security laws.
 
 Not implemented or proven:
 
@@ -56,6 +61,12 @@ For M1 runner or replay work also read:
 - `AXIOM_BENCH_RUNNER_CONTRACT.md`
 - `M1_BENCHMARK_SOURCE_EVIDENCE.md`
 - `M1_RUNNER_SOURCE_EVIDENCE.md`
+
+For review automation work also read:
+
+- `AUTOMATED_REVIEW_CONTRACT.md`
+- `REV2_REVIEW_GATE_SOURCE_EVIDENCE.md`
+- `review/policy/0.1.0/gate-policy.json`
 
 ## Mandatory laws
 
@@ -113,6 +124,22 @@ For M1 runner or replay work also read:
 - Process-start failure must produce structured failed Evidence.
 - Replay executes zero subprocesses and recomputes the conformance decision.
 - Raw volatile Evidence and deterministic canonical Evidence remain separate.
+
+## Automated review laws
+
+- Deterministic review findings are the only blocking review findings; AI
+  review remains advisory and cannot set the merge verdict.
+- The deterministic gate fails closed on malformed input, internal error,
+  invalid policy, unparseable workflows, or report-validation failure.
+- Review workflows use `pull_request` with read-only permissions;
+  `pull_request_target` checkout or execution is forbidden.
+- Third-party Actions remain pinned by immutable full-length commit SHA.
+- Protected tests, Agent B registrations, proof stages, schemas, and
+  workflows may change only through an explicit gate-policy edit.
+- Review automation may not weaken tests, proof, contracts, permissions, or
+  branch policy to obtain a green result.
+- The gate never replaces an existing output directory and never publishes
+  comments.
 
 ## Required feature workflow
 

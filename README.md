@@ -111,9 +111,26 @@ The canonical command creates:
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
 
-The current proof target includes 112 unit/integration tests, 75 separate Agent
+The current proof target includes 156 unit/integration tests, 89 separate Agent
 B checks, trusted conformance and authority-bound replay bundles, 38
 interpreter/native cases, 52 invalid fixtures, and deterministic Evidence.
+
+## Automated review state
+
+`review.report-contract-0.1` implements the versioned automated-review report
+contract with offline validation and safe deterministic rendering.
+`review.deterministic-gate-0.1` implements the deterministic pull-request
+review gate: one offline command that recomputes the repository contracts,
+verifies exact-head proof evidence, enforces a versioned protected baseline,
+rejects unpinned actions, `pull_request_target` triggers, and widened workflow
+permissions, and fails closed. AI review remains advisory-only by contract and
+is not implemented; no comment publication or merge authority exists.
+
+```bash
+python3 run_repo_proof.py
+python3 tools/run_deterministic_review.py --pull-request <n> \
+  --base-sha "$(git merge-base origin/main HEAD)"
+```
 
 ## Ordered path to v1.0
 
