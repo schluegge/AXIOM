@@ -15,11 +15,26 @@ FRESHNESS_SCHEMA_VERSION = "0.2.0"
 FRESHNESS_SCHEMA_PATH = Path("review/contracts/0.2.0/freshness.schema.json")
 _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 _MARKDOWN_SPECIAL = re.compile(r"([\`*_{}\[\]()#+!|>])")
+_BACKTICK_RUN = re.compile(r"`+")
+
+
+def _flatten(value: Any) -> str:
+    return " ".join(str(value).split())
 
 
 def _markdown_text(value: Any) -> str:
-    flattened = " ".join(str(value).split())
-    return _MARKDOWN_SPECIAL.sub(r"\\\1", flattened)
+    return _MARKDOWN_SPECIAL.sub(r"\\\1", _flatten(value))
+
+
+def _markdown_code(value: Any) -> str:
+    """Render untrusted scalar text inside a non-escapable CommonMark code span."""
+
+    flattened = _flatten(value)
+    longest = max((len(match.group(0)) for match in _BACKTICK_RUN.finditer(flattened)), default=0)
+    fence = "`" * (longest + 1)
+    if flattened.startswith(("`", " ")) or flattened.endswith(("`", " ")):
+        flattened = f" {flattened} "
+    return f"{fence}{flattened}{fence}"
 
 
 def _source_dict(source: SourceResult) -> dict[str, Any]:
@@ -133,12 +148,12 @@ def render_freshness_markdown(envelope: dict[str, Any]) -> str:
     lines = [
         "### Exact-head Evidence",
         "",
-        f"- Repository: `{_markdown_text(envelope['repository'])}`",
+        f"- Repository: {_markdown_code(envelope['repository'])}",
         f"- Pull request: `#{envelope['pull_request_number']}`",
-        f"- Base SHA: `{_markdown_text(envelope['base_sha'])}`",
-        f"- Current head SHA: `{_markdown_text(envelope['current_head_sha'])}`",
+        f"- Base SHA: {_markdown_code(envelope['base_sha'])}",
+        f"- Current head SHA: {_markdown_code(envelope['current_head_sha'])}",
         f"- Publisher execution: `{envelope['publisher_run_id']}/{envelope['publisher_run_attempt']}`",
-        f"- Semantic digest: `{_markdown_text(envelope['semantic_sha256'])}`",
+        f"- Semantic digest: {_markdown_code(envelope['semantic_sha256'])}",
         "",
         "#### Bound sources",
     ]
@@ -147,9 +162,9 @@ def render_freshness_markdown(envelope: dict[str, Any]) -> str:
             "- "
             f"**{_markdown_text(source['source_id'])}**: "
             f"{_markdown_text(source['conclusion'])}; "
-            f"head `{_markdown_text(source['reviewed_head_sha'])}`; "
+            f"head {_markdown_code(source['reviewed_head_sha'])}; "
             f"execution `{source['run_id']}/{source['run_attempt']}`; "
-            f"artifact `{_markdown_text(source['artifact_name'])}`; "
-            f"digest `{_markdown_text(source['artifact_digest'])}`"
+            f"artifact {_markdown_code(source['artifact_name'])}; "
+            f"digest {_markdown_code(source['artifact_digest'])}"
         )
     return "\n".join(lines) + "\n"
