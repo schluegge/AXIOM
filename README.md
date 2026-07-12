@@ -111,7 +111,7 @@ The canonical command creates:
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
 
-The current proof target includes 156 unit/integration tests, 89 separate Agent
+The current proof target includes 179 unit/integration tests, 99 separate Agent
 B checks, trusted conformance and authority-bound replay bundles, 38
 interpreter/native cases, 52 invalid fixtures, and deterministic Evidence.
 

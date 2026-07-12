@@ -589,8 +589,33 @@ def check_protected_baseline(
     )
 
 
+def _unconditional_calls(function: ast.FunctionDef) -> set[str]:
+    """Collect name calls that execute unconditionally when the function runs.
+
+    Only statement-level calls in the linear body are counted, descending
+    solely through ``try``/``finally`` blocks. Calls inside conditional
+    branches, loops, ``with`` blocks, nested functions, or other constructs
+    that may never execute do not count.
+    """
+
+    called: set[str] = set()
+    stack: list[ast.stmt] = list(function.body)
+    while stack:
+        statement = stack.pop()
+        if isinstance(statement, ast.Try):
+            stack.extend(statement.body)
+            stack.extend(statement.finalbody)
+        elif (
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Call)
+            and isinstance(statement.value.func, ast.Name)
+        ):
+            called.add(statement.value.func.id)
+    return called
+
+
 def check_agent_b_registrations(root: Path, policy: dict[str, Any] | None) -> CheckOutcome:
-    """Require every policy-listed Agent B module to stay imported and invoked."""
+    """Require every policy-listed Agent B module to stay invoked from main()."""
 
     source_path = root / "agents" / "agent_b_review.py"
     registered: dict[str, str] = {}
@@ -606,8 +631,18 @@ def check_agent_b_registrations(root: Path, policy: dict[str, Any] | None) -> Ch
                 for alias in node.names:
                     if alias.name == "register":
                         registered[node.module] = alias.asname or alias.name
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-                called.add(node.func.id)
+        main_function = next(
+            (
+                node
+                for node in tree.body
+                if isinstance(node, ast.FunctionDef) and node.name == "main"
+            ),
+            None,
+        )
+        if main_function is None:
+            error = "agents/agent_b_review.py has no top-level main() function"
+        else:
+            called = _unconditional_calls(main_function)
     findings: list[dict[str, Any]] = []
     missing: list[str] = []
     if policy is not None:
@@ -623,7 +658,7 @@ def check_agent_b_registrations(root: Path, policy: dict[str, Any] | None) -> Ch
                 _finding(
                     "AX-REV-GATE-0402",
                     "Agent B registration was removed",
-                    f"module is no longer imported and invoked by agent_b_review.py: {module}"
+                    f"module is not imported and invoked from main() in agent_b_review.py: {module}"
                     + (f" ({error})" if error else ""),
                     "checks/agent-b-registrations.json",
                     "Restore the Agent B registration; Agent B checks are release blocking.",

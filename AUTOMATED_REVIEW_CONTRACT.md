@@ -68,7 +68,11 @@ Every run records these checks with the SHA-256 of their exact input:
 - `review.protected-baseline` — every file in the versioned gate policy's
   protected list still exists;
 - `review.agent-b-registrations` — every policy-listed Agent B module is
-  still imported and invoked by `agents/agent_b_review.py`;
+  still imported and invoked as an unconditional statement in the top-level
+  `main()` registration sequence of `agents/agent_b_review.py`, where the
+  gate descends only through `try`/`finally` blocks; calls inside
+  conditional branches, loops, nested functions, or other possibly
+  unexecuted code do not count;
 - `review.workflow-security` — every workflow declares explicit permissions
   within the policy allowlist, pins every `uses:` reference to a full
   40-character commit SHA, and never declares `pull_request_target`;
@@ -85,6 +89,12 @@ permission allowlists, an unknown-workflow default allowlist of
 B registration, or widening a permission therefore requires an explicit,
 reviewable policy edit; it can never happen silently. Policy paths must be
 normalized, relative, and confined to the repository root.
+
+The protected baseline binds existence and registration execution, not file
+contents. Weakening the interior of a still-present protected file remains
+visible in the pull-request diff and is the review scope of the Agent B
+charter and the issue #39 adversarial matrix; this gate version does not
+claim content-digest binding.
 
 ### Fail-closed exit codes
 
