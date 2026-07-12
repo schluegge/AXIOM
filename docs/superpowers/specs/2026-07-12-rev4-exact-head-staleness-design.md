@@ -38,7 +38,7 @@ A freshness envelope records the repository, pull-request number, base SHA, curr
 
 ## Stable diagnostics
 
-- `AX-REV-FRESH-0101`: source result lacks valid execution identity.
+- `AX-REV-FRESH-0101`: current-head SHA is invalid, or a source result lacks a valid execution identity.
 - `AX-REV-FRESH-0102`: source result targets a previous or different head.
 - `AX-REV-FRESH-0103`: source results contain mixed reviewed-head SHAs.
 - `AX-REV-FRESH-0104`: non-passing source was represented as current passing evidence.
