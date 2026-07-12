@@ -20,19 +20,36 @@ _RFC3339_DATETIME = re.compile(
 
 @dataclass(frozen=True, order=True)
 class Finding:
+    """One stable validation finding emitted by the review contract."""
+
     code: str
     path: str
     message: str
 
     def as_dict(self) -> dict[str, str]:
+        """Return the deterministic JSON-compatible finding form."""
+
         return {"code": self.code, "path": self.path, "message": self.message}
 
 
+class InvalidReviewReport(ValueError):
+    """Raised when Markdown rendering is requested for an invalid report."""
+
+    def __init__(self, findings: Iterable[Finding]) -> None:
+        self.findings = tuple(sorted(findings))
+        codes = ", ".join(finding.code for finding in self.findings)
+        super().__init__(f"review report failed validation: {codes}")
+
+
 def canonical_json(value: Any) -> str:
+    """Serialize a JSON-compatible value with stable key order and newline."""
+
     return json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
 def semantic_sha256(report: dict[str, Any]) -> str:
+    """Hash report meaning after removing only the digest field itself."""
+
     normalized = {key: value for key, value in report.items() if key != "semantic_sha256"}
     payload = json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return sha256(payload.encode("utf-8")).hexdigest()
@@ -62,6 +79,8 @@ def _is_rfc3339_datetime(value: str) -> bool:
 
 
 def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Finding]:
+    """Validate one report offline against schema and semantic authority laws."""
+
     findings: list[Finding] = []
     for path, reference in _walk_refs(schema):
         if not reference.startswith("#"):
@@ -156,6 +175,8 @@ def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Find
 
 
 def load_and_validate_report(root: Path, report_path: Path) -> tuple[dict[str, Any] | None, list[Finding]]:
+    """Load a report and the repository schema, then validate both offline."""
+
     try:
         report = json.loads(report_path.read_text(encoding="utf-8"))
         schema = json.loads((root / SCHEMA_PATH).read_text(encoding="utf-8"))
@@ -168,7 +189,13 @@ def load_and_validate_report(root: Path, report_path: Path) -> tuple[dict[str, A
     return report, validate_report(report, schema)
 
 
-def render_markdown(report: dict[str, Any]) -> str:
+def render_markdown(report: dict[str, Any], schema: dict[str, Any]) -> str:
+    """Render a deterministic summary only after complete contract validation."""
+
+    validation_findings = validate_report(report, schema)
+    if validation_findings:
+        raise InvalidReviewReport(validation_findings)
+
     status = report["status"]
     lines = [
         "## AXIOM automated review",
