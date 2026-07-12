@@ -296,6 +296,32 @@ class ProtectedBaselineTests(ReviewGateFixture):
         self.assertEqual(result.exit_code, EXIT_BLOCKED)
         self.assertIn("AX-REV-GATE-0402", self.finding_codes(result))
 
+    def test_registration_in_unreachable_branch_fails(self) -> None:
+        self.synthesize_evidence()
+        review = self.fixture / "agents/agent_b_review.py"
+        text = review.read_text(encoding="utf-8")
+        text = text.replace(
+            "        register_references()\n",
+            "        if False:\n            register_references()\n",
+        )
+        review.write_text(text, encoding="utf-8")
+        result = self.run_gate()
+        self.assertEqual(result.exit_code, EXIT_BLOCKED)
+        self.assertIn("AX-REV-GATE-0402", self.finding_codes(result))
+
+    def test_registration_in_nested_function_inside_main_fails(self) -> None:
+        self.synthesize_evidence()
+        review = self.fixture / "agents/agent_b_review.py"
+        text = review.read_text(encoding="utf-8")
+        text = text.replace(
+            "        register_references()\n",
+            "        def _nested() -> None:\n            register_references()\n",
+        )
+        review.write_text(text, encoding="utf-8")
+        result = self.run_gate()
+        self.assertEqual(result.exit_code, EXIT_BLOCKED)
+        self.assertIn("AX-REV-GATE-0402", self.finding_codes(result))
+
     def test_invalid_policy_fails_closed(self) -> None:
         self.synthesize_evidence()
         policy = self.fixture / "review/policy/0.1.0/gate-policy.json"
