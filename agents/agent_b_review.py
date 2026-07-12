@@ -19,6 +19,7 @@ from agents.agent_b_benchmark_contract_checks import register as register_benchm
 from agents.agent_b_benchmark_runner_checks import register as register_benchmark_runner
 from agents.agent_b_contract_checks import register as register_contract
 from agents.agent_b_core_checks import register as register_core
+from agents.agent_b_freshness_checks import register as register_freshness
 from agents.agent_b_lvalue_checks import register as register_lvalues
 from agents.agent_b_reference_checks import register as register_references
 from agents.agent_b_review_gate_checks import register as register_review_gate
@@ -41,6 +42,7 @@ def main() -> int:
         register_benchmark_runner()
         register_trusted_task_authority()
         register_review_gate()
+        register_freshness()
         register_aggregate_semantics()
         register_aggregate_layout()
         register_aggregate_generated()
