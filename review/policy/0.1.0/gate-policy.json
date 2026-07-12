@@ -18,7 +18,9 @@
     "agents/agent_b_review.py",
     "agents/agent_b_review_gate_checks.py",
     "agents/agent_b_support.py",
+    "agents/agent_b_trusted_task_authority_checks.py",
     "benchmarks/contracts/0.1.0/contract.json",
+    "benchmarks/contracts/0.1.0/trusted-tasks.json",
     "benchmarks/schemas/0.1.0/attempt.schema.json",
     "benchmarks/schemas/0.1.0/bundle-manifest.schema.json",
     "benchmarks/schemas/0.1.0/command-record.schema.json",
@@ -31,6 +33,7 @@
     "benchmarks/schemas/0.1.0/task.schema.json",
     "benchmarks/schemas/0.1.0/toolchains.schema.json",
     "benchmarks/schemas/0.1.0/trace-event.schema.json",
+    "benchmarks/schemas/0.1.0/trusted-task-registry.schema.json",
     "contracts/project.json",
     "contracts/project.schema.json",
     "requirements-proof.txt",
@@ -40,6 +43,7 @@
     "roadmap/v1.json",
     "roadmap/v1.schema.json",
     "run_repo_proof.py",
+    "tests/benchmark_test_repository.py",
     "tests/test_aggregate_diagnostics.py",
     "tests/test_aggregate_execution.py",
     "tests/test_aggregate_layout.py",
@@ -52,6 +56,7 @@
     "tests/test_references.py",
     "tests/test_review_contract.py",
     "tests/test_review_gate.py",
+    "tests/test_trusted_task_authority.py",
     "tests/test_vertical.py",
     "tools/check_benchmark_contract.py",
     "tools/check_project_contract.py",
@@ -71,19 +76,29 @@
     "agents.agent_b_core_checks",
     "agents.agent_b_lvalue_checks",
     "agents.agent_b_reference_checks",
-    "agents.agent_b_review_gate_checks"
+    "agents.agent_b_review_gate_checks",
+    "agents.agent_b_trusted_task_authority_checks"
   ],
   "workflow_rules": {
-    "default_permission_allowlist": {"contents": "read"},
+    "default_permission_allowlist": {
+      "contents": "read"
+    },
     "workflows": {
       ".github/workflows/deterministic-review.yml": {
-        "permissions": {"contents": "read"}
+        "permissions": {
+          "contents": "read"
+        }
       },
       ".github/workflows/proof.yml": {
-        "permissions": {"contents": "read"}
+        "permissions": {
+          "contents": "read"
+        }
       },
       ".github/workflows/v1-roadmap-contract.yml": {
-        "permissions": {"contents": "read", "issues": "read"}
+        "permissions": {
+          "contents": "read",
+          "issues": "read"
+        }
       }
     }
   },
