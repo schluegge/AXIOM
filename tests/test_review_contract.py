@@ -55,6 +55,12 @@ class ReviewContractTests(unittest.TestCase):
         self.assertEqual(render_markdown(report, SCHEMA), render_markdown(copy.deepcopy(report), SCHEMA))
         self.assertIn("Status: **PASSED**", render_markdown(report, SCHEMA))
 
+    def test_external_dynamic_schema_reference_fails(self) -> None:
+        schema = copy.deepcopy(SCHEMA)
+        schema["properties"]["repository"] = {"$dynamicRef": "https://example.invalid/review.schema.json"}
+        findings = validate_report(valid_report(), schema)
+        self.assertIn("AX-REV-CONTRACT-1001", {finding.code for finding in findings})
+
     def test_advisory_blocking_escalation_fails(self) -> None:
         report = valid_report("advisory_ai")
         report["status"] = "failed"
