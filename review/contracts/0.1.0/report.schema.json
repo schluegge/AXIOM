@@ -1,0 +1,73 @@
+{
+  "$id": "https://axiom.invalid/review/contracts/0.1.0/report.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "definitions": {
+    "affected_location": {
+      "additionalProperties": false,
+      "properties": {
+        "end_line": {"minimum": 1, "type": ["integer", "null"]},
+        "path": {"minLength": 1, "type": "string"},
+        "start_line": {"minimum": 1, "type": ["integer", "null"]}
+      },
+      "required": ["path", "start_line", "end_line"],
+      "type": "object"
+    },
+    "check": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {"minLength": 1, "type": "string"},
+        "conclusion": {"enum": ["passed", "failed", "missing", "cancelled", "skipped", "unavailable", "stale"]},
+        "evidence_path": {"type": ["string", "null"]},
+        "input_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+        "title": {"minLength": 1, "type": "string"}
+      },
+      "required": ["check_id", "title", "input_sha256", "conclusion", "evidence_path"],
+      "type": "object"
+    },
+    "finding": {
+      "additionalProperties": false,
+      "properties": {
+        "affected_location": {"anyOf": [{"$ref": "#/definitions/affected_location"}, {"type": "null"}]},
+        "authority": {"enum": ["blocking", "advisory"]},
+        "code": {"pattern": "^AX-REV-[A-Z0-9-]+$", "type": "string"},
+        "evidence_path": {"type": "string"},
+        "explanation": {"minLength": 1, "type": "string"},
+        "remediation": {"minLength": 1, "type": "string"},
+        "severity": {"enum": ["critical", "high", "medium", "low", "nit"]},
+        "title": {"minLength": 1, "type": "string"}
+      },
+      "required": ["code", "title", "explanation", "severity", "authority", "evidence_path", "affected_location", "remediation"],
+      "type": "object"
+    },
+    "section": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {"minLength": 1, "type": "string"},
+        "explanation": {"minLength": 1, "type": "string"},
+        "title": {"minLength": 1, "type": "string"}
+      },
+      "required": ["code", "title", "explanation"],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "base_sha": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+    "checks": {"items": {"$ref": "#/definitions/check"}, "type": "array"},
+    "document_kind": {"const": "axiom.automated-review.report"},
+    "findings": {"items": {"$ref": "#/definitions/finding"}, "type": "array"},
+    "generated_at": {"format": "date-time", "type": "string"},
+    "known_unreviewed": {"items": {"$ref": "#/definitions/section"}, "type": "array"},
+    "pull_request_number": {"minimum": 1, "type": "integer"},
+    "report_id": {"minLength": 1, "type": "string"},
+    "repository": {"pattern": "^[^/]+/[^/]+$", "type": "string"},
+    "reviewed_head_sha": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+    "reviewer_class": {"enum": ["deterministic", "advisory_ai"]},
+    "schema_version": {"const": "0.1.0"},
+    "semantic_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "status": {"enum": ["passed", "failed", "unavailable", "stale"]},
+    "unavailable": {"items": {"$ref": "#/definitions/section"}, "type": "array"}
+  },
+  "required": ["document_kind", "schema_version", "report_id", "repository", "pull_request_number", "base_sha", "reviewed_head_sha", "generated_at", "reviewer_class", "status", "findings", "checks", "known_unreviewed", "unavailable", "semantic_sha256"],
+  "type": "object"
+}
