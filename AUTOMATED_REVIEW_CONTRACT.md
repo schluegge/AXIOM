@@ -24,7 +24,11 @@ The status enum is `passed`, `failed`, `unavailable`, or `stale`. A report marke
 
 `canonical_json` emits UTF-8 JSON with sorted keys and one final newline. `semantic_sha256` hashes compact sorted-key JSON after removing only the digest field itself. Array order remains semantically meaningful.
 
-`render_markdown` requires the report and its schema, runs the complete schema and semantic validator, and raises `InvalidReviewReport` when any finding exists. It produces a deterministic summary only for a valid report; callers cannot bypass validation and render a false `PASSED` status.
+`validate_report` is the low-level offline validator for an explicitly supplied schema. It rejects non-local `$ref` and `$dynamicRef` targets before constructing the Draft 2020-12 validator.
+
+`render_markdown` accepts only the report. It loads the packaged schema from the immutable versioned repository path, runs the complete schema and semantic validator, and raises `InvalidReviewReport` when the schema cannot be loaded or any finding exists. A caller cannot substitute a permissive schema and render an invalid report as `PASSED`.
+
+`load_and_validate_report` accepts an explicit trusted repository root so repository tools can validate a report against that repository's versioned schema. Missing, malformed, or non-object JSON is attributed to the exact failing file.
 
 ## Versioning and migration policy
 
@@ -38,6 +42,9 @@ Every version has an immutable versioned schema path. Existing schemas are not e
 
 ## Stable validator findings
 
+- `AX-REV-CONTRACT-0001`: required report or schema JSON file is missing
+- `AX-REV-CONTRACT-0002`: report or schema JSON is malformed
+- `AX-REV-CONTRACT-0003`: report or schema JSON root is not an object
 - `AX-REV-CONTRACT-1001`: external schema reference
 - `AX-REV-CONTRACT-1002`: invalid Draft 2020-12 schema
 - `AX-REV-CONTRACT-1003`: report schema violation, including unknown fields and invalid enums
