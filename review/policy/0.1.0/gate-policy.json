@@ -16,6 +16,7 @@
     "agents/agent_b_lvalue_checks.py",
     "agents/agent_b_reference_checks.py",
     "agents/agent_b_review.py",
+    "agents/agent_b_review_gate_checks.py",
     "agents/agent_b_support.py",
     "benchmarks/contracts/0.1.0/contract.json",
     "benchmarks/schemas/0.1.0/attempt.schema.json",
@@ -69,7 +70,8 @@
     "agents.agent_b_contract_checks",
     "agents.agent_b_core_checks",
     "agents.agent_b_lvalue_checks",
-    "agents.agent_b_reference_checks"
+    "agents.agent_b_reference_checks",
+    "agents.agent_b_review_gate_checks"
   ],
   "workflow_rules": {
     "default_permission_allowlist": {"contents": "read"},
