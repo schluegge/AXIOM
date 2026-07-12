@@ -590,7 +590,7 @@ def check_protected_baseline(
 
 
 def check_agent_b_registrations(root: Path, policy: dict[str, Any] | None) -> CheckOutcome:
-    """Require every policy-listed Agent B module to stay imported and invoked."""
+    """Require every policy-listed Agent B module to stay invoked from main()."""
 
     source_path = root / "agents" / "agent_b_review.py"
     registered: dict[str, str] = {}
@@ -606,8 +606,22 @@ def check_agent_b_registrations(root: Path, policy: dict[str, Any] | None) -> Ch
                 for alias in node.names:
                     if alias.name == "register":
                         registered[node.module] = alias.asname or alias.name
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-                called.add(node.func.id)
+        main_function = next(
+            (
+                node
+                for node in tree.body
+                if isinstance(node, ast.FunctionDef) and node.name == "main"
+            ),
+            None,
+        )
+        if main_function is None:
+            error = "agents/agent_b_review.py has no top-level main() function"
+        else:
+            called = {
+                node.func.id
+                for node in ast.walk(main_function)
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            }
     findings: list[dict[str, Any]] = []
     missing: list[str] = []
     if policy is not None:
@@ -623,7 +637,7 @@ def check_agent_b_registrations(root: Path, policy: dict[str, Any] | None) -> Ch
                 _finding(
                     "AX-REV-GATE-0402",
                     "Agent B registration was removed",
-                    f"module is no longer imported and invoked by agent_b_review.py: {module}"
+                    f"module is not imported and invoked from main() in agent_b_review.py: {module}"
                     + (f" ({error})" if error else ""),
                     "checks/agent-b-registrations.json",
                     "Restore the Agent B registration; Agent B checks are release blocking.",
