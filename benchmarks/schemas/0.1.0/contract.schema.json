@@ -13,6 +13,7 @@
     "specification_path",
     "preregistration_path",
     "source_evidence_path",
+    "trusted_task_registry_path",
     "schema_paths",
     "required_lanes",
     "required_conformance_adapters",
@@ -30,6 +31,7 @@
     "specification_path": {"$ref": "#/$defs/path"},
     "preregistration_path": {"$ref": "#/$defs/path"},
     "source_evidence_path": {"$ref": "#/$defs/path"},
+    "trusted_task_registry_path": {"const": "benchmarks/contracts/0.1.0/trusted-tasks.json"},
     "schema_paths": {
       "type": "object",
       "additionalProperties": false,

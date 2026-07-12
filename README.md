@@ -10,11 +10,12 @@ The focused v1 product target is:
 safe deterministic local CLI and structured-data tools
 ```
 
-Normative semantic specifications are the primary authority for language
-meaning. `contracts/project.json` is the validated current-state index;
-`MVP_ROADMAP.md`, `roadmap/v1.json`, and issue #9 govern implementation
-sequence; `AI_FIRST_MVP_CONTRACT.md` and release gate #25 govern measurable
-product claims.
+Normative semantic and benchmark specifications are the primary authority.
+`contracts/project.json` is the validated current-state index;
+`MVP_ROADMAP.md` and `roadmap/v1.json` govern implementation sequence;
+`AI_FIRST_MVP_CONTRACT.md` governs measurable release claims. GitHub issues #9
+and #25 track the program and release gate but do not override repository
+contracts.
 
 ## Current compiler path
 
@@ -49,12 +50,19 @@ The primitive source types are `i32` and `bool`. Supported profiles are
 offline validator, contamination and fairness laws, trust boundary, and
 adversarial contract checks.
 
-`benchmark.trusted-conformance-0.1` implements repository-controlled reference
-and seeded-wrong execution, bounded command arrays, deterministic canonical
-bundles, and subprocess-free replay. The runner enforces command and task
-timeouts plus output, feedback, invocation, candidate-byte, file, and
-changed-line limits. Local model-generated candidates remain blocked pending an
-approved isolated backend.
+`benchmark.trusted-conformance-0.1` implements trusted reference and seeded-wrong
+execution through the public `axiom_bench` package and repository CLI tools.
+Before output creation or process execution, those entry points require the
+exact task path to appear in
+`benchmarks/contracts/0.1.0/trusted-tasks.json`. The registry, its schema, the
+task schema, the repository-relative path, symlink boundary, and task ID are
+validated together. Unregistered task paths fail with
+`AX-BENCH-RUNNER-UNTRUSTED-TASK`.
+
+The runner uses bounded command arrays and deterministic canonical bundles. It
+enforces command and task timeouts plus output, feedback, invocation,
+candidate-byte, file, and changed-line limits. Local model-generated candidates
+remain blocked pending an approved isolated backend.
 
 Canonical command records and stdout/stderr payloads replace temporary workspace
 and task-root paths with stable placeholders. Raw Evidence retains the original
@@ -62,16 +70,28 @@ bytes outside the canonical bundle. Replay bounds actual decompressed ZIP bytes,
 not only archive metadata, and converts malformed or memory-exhausting input
 into a failed report.
 
-Replay verifies candidate bytes against retained attempt hashes and derives
-phase outcomes and failure reasons from command records, stream sizes, limits,
-and trace terminal events instead of trusting stored outcome flags. The
-repository proof attacks both candidate replacement and command-result
-rewriting after the attacker repairs the manifest and internal hash chain.
+Replay first verifies internal paths, bytes, hashes, commands, outcomes, limits,
+and trace events without starting a subprocess. A passing internal replay is
+then checked against repository authority: the registered task ID and task
+SHA-256, selected language variant, adapter-derived trust class, and the expected
+reference or seeded-wrong outcome. The expected outcome is not accepted from the
+bundle as its own authority. A disagreement fails with
+`AX-BENCH-REPLAY-AUTHORITY`.
+
+The repository proof attacks candidate replacement, command-result rewriting,
+external copied tasks, registered-task hash replacement, and coherent
+seeded-wrong-to-reference relabeling after the attacker repairs the manifest and
+internal hash chain.
 
 The repository proof uses a synthetic four-language-key fixture to prove runner
 mechanics: reference success, exact seeded-wrong rejection, byte-identical
-reference bundles, tamper detection, and replay without a subprocess. This is
-not a language comparison or evidence that AXIOM is better for AI development.
+reference bundles, authority enforcement, tamper detection, and replay without
+a subprocess. This is not a language comparison or evidence that AXIOM is better
+for AI development.
+
+`axiom_bench.runner` and `axiom_bench.replay` contain implementation helpers.
+The supported authority-enforcing interfaces are the exports from
+`axiom_bench`, the repository CLI tools, and `run_repo_proof.py`.
 
 ## Verification
 
@@ -91,9 +111,9 @@ The canonical command creates:
 evidence/AXIOM_REPO_PROOF_EVIDENCE.zip
 ```
 
-The current proof target includes 109 unit/integration tests, 73 separate Agent
-B checks, trusted conformance and replay bundles, 38 interpreter/native cases,
-52 invalid fixtures, and deterministic Evidence.
+The current proof target includes 112 unit/integration tests, 75 separate Agent
+B checks, trusted conformance and authority-bound replay bundles, 38
+interpreter/native cases, 52 invalid fixtures, and deterministic Evidence.
 
 ## Ordered path to v1.0
 

@@ -7,14 +7,24 @@ Companion: `AXIOM_BENCH_SPEC.md`
 ## 1. Purpose
 
 The trusted conformance layer proves that the benchmark harness can execute
-repository-controlled reference and seeded-wrong candidates, retain complete
+repository-registered reference and seeded-wrong candidates, retain complete
 Evidence, build deterministic canonical bundles, and replay decisions without a
 model or subprocess.
 
 It does not score a model, isolate malicious code, freeze the benchmark suite,
 or compare language quality.
 
-## 2. Trust boundary
+## 2. Supported interface and trust boundary
+
+The supported authority-enforcing interfaces are:
+
+- exports from the `axiom_bench` package;
+- `tools/run_benchmark_conformance.py`;
+- `tools/replay_benchmark_conformance.py`;
+- `run_repo_proof.py`.
+
+`axiom_bench.runner` and `axiom_bench.replay` contain implementation helpers and
+are not a second supported security interface.
 
 Supported execution adapters:
 
@@ -36,10 +46,42 @@ Trusted commands may access resources available to the host account. This
 capability does not claim filesystem namespaces, syscall filtering, network
 isolation, CPU/memory quotas, or malicious process-tree containment.
 
-## 3. Task input
+## 3. Trusted task authority
 
-The runner consumes one schema-valid task and one selected language variant.
-The runner-compatible variant must additionally declare `candidate_path`.
+The local trusted-task authority is:
+
+```text
+benchmarks/contracts/0.1.0/trusted-tasks.json
+```
+
+Before output creation, workspace creation, candidate application, or process
+start, the supported runner interface must:
+
+1. load the registry and its exact local schema;
+2. reject duplicate task IDs or paths;
+3. resolve the declared task path as exact normalized POSIX repository-relative
+   syntax;
+4. reject root escapes and symbolic links;
+5. require a regular task file;
+6. validate the task with the canonical task schema;
+7. require registry and task-document IDs to agree;
+8. compute the task SHA-256 from the registered repository bytes;
+9. require the caller-supplied path to equal the registered resolved path.
+
+A copied, modified at another path, or otherwise unregistered task must fail
+before any output directory or process exists with:
+
+```text
+AX-BENCH-RUNNER-UNTRUSTED-TASK
+```
+
+Authority file or schema failures use `AX-BENCH-RUNNER-AUTHORITY`.
+
+## 4. Task input
+
+After authority resolution, the runner consumes the registered schema-valid task
+and one selected language variant. The runner-compatible variant must declare
+`candidate_path`.
 
 Required runner fields include:
 
@@ -54,10 +96,10 @@ M1 trusted conformance applies exactly one candidate source file. The
 `max_candidate_files` budget must permit that file. Multi-file candidate editing
 requires a later compatible extension or schema version.
 
-## 4. Paths
+## 5. Paths
 
-All contract, bundle, and internal-reference paths must be exact normalized
-POSIX relative paths.
+All contract, registry, bundle, and internal-reference paths must be exact
+normalized POSIX relative paths.
 
 Rejected forms include:
 
@@ -70,11 +112,11 @@ Rejected forms include:
 - symbolic links where prohibited;
 - case-folded or Unicode-normalized ZIP collisions.
 
-Task source paths must remain under the task root. Candidate paths must remain
-under the temporary workspace. Replay paths must remain under the extracted
-bundle root.
+Task source paths remain under the registered task root. Candidate paths remain
+under the temporary workspace. Replay paths remain under the extracted bundle
+root.
 
-## 5. Output directory
+## 6. Output directory
 
 The caller must provide a path that does not already exist. The runner creates
 that directory but never recursively replaces an existing directory.
@@ -84,25 +126,26 @@ initial Evidence-write failure is returned as a structured
 `AX-BENCH-RUNNER-INVALID-PATH` finding rather than an unhandled filesystem
 exception.
 
-## 6. Candidate application
+## 7. Candidate application
 
-For each run the runner:
+For each run the supported runner interface:
 
-1. validates the task and selected adapter;
-2. validates source and candidate paths;
-3. reads the exact starter and selected candidate bytes;
-4. checks candidate-byte and changed-line budgets;
-5. creates a new temporary workspace;
-6. writes the starter and then selected candidate to `candidate_path`;
-7. executes the frozen phase commands;
-8. copies retained Evidence outside the temporary workspace;
-9. removes the temporary workspace.
+1. resolves and validates repository task authority;
+2. validates the selected adapter and language variant;
+3. validates source and candidate paths;
+4. reads the exact starter and selected candidate bytes;
+5. checks candidate-byte and changed-line budgets;
+6. creates a new temporary workspace;
+7. writes the starter and then selected candidate to `candidate_path`;
+8. executes the frozen phase commands;
+9. copies retained Evidence outside the temporary workspace;
+10. removes the temporary workspace.
 
 The candidate application surface is one declared file. The local child remains
 trusted; this capability does not claim complete observation or prevention of
 all other host filesystem accesses.
 
-## 7. Command expansion
+## 8. Command expansion
 
 Commands are arrays. Each array item remains one subprocess argument.
 `shell=False` is mandatory.
@@ -121,7 +164,7 @@ Unknown, malformed, or unresolved placeholders are rejected before process
 start. No shell quotes, variables, globbing, pipes, redirection, command
 substitution, or tilde expansion are interpreted.
 
-## 8. Environment
+## 9. Environment
 
 The child receives an explicit minimal mapping containing only available process
 startup variables plus workspace-local temporary and home paths:
@@ -141,7 +184,7 @@ Provider keys, repository tokens, proxy variables, seeded secrets, and other
 inherited variables are omitted. The exact mapping is retained in each command
 record.
 
-## 9. Phase order
+## 10. Phase order and failure mapping
 
 Commands execute in this order and stop on the first failure:
 
@@ -168,7 +211,7 @@ output/feedback/invocation budget -> resource_limit
 
 A successful provider-neutral check records parse and compile success together.
 
-## 10. Reliability budgets
+## 11. Reliability budgets
 
 The trusted runner enforces:
 
@@ -196,7 +239,7 @@ return_code = null
 failure_reason = runner_error
 ```
 
-## 11. Evidence
+## 12. Evidence
 
 The output directory contains:
 
@@ -238,61 +281,83 @@ Candidate bytes, non-path output content, exit status, timeout/limit facts,
 outcomes, failure reason, and hashes of the resulting canonical payloads are not
 normalized away.
 
-## 12. Conformance decision
+## 13. Authoritative conformance decision
 
-Reference conformance passes only when the attempt has complete Evidence and full
-success.
+Reference conformance expects complete Evidence and full success with no failure
+reason.
 
-Seeded-wrong conformance passes only when:
+Seeded-wrong conformance expects incomplete success and the exact
+`required_failure_for_seeded_wrong` from the registered task acceptance
+contract.
 
-- full success is false;
-- Evidence is complete;
-- the actual failure reason exactly equals
-  `required_failure_for_seeded_wrong`.
+The adapter and registered task derive these expectations. A stored
+`expected_outcome` is Evidence to cross-check, not authority.
 
 A wrong candidate that succeeds is a harness failure, not a successful result.
 
-## 13. Deterministic bundle
+## 14. Deterministic bundle
 
 Canonical ZIPs use sorted paths, fixed timestamps, fixed regular-file
 permissions, canonical JSON, deterministic compression settings, stable
 placeholder substitution, and no raw volatile records.
 
-Two runs of the same trusted fixture under the same frozen effective toolchain
-must produce byte-identical canonical ZIPs, including when a command emits the
-temporary workspace or task-root path.
+Two runs of the same registered fixture under the same frozen effective
+toolchain must produce byte-identical canonical ZIPs, including when a command
+emits the temporary workspace or task-root path.
 
-## 14. Replay
+## 15. Replay
+
+Replay has two gates.
+
+### 15.1 Internal consistency gate
 
 Replay:
 
 - starts zero subprocesses;
 - rejects unsafe, duplicate, colliding, encrypted, symlink, or over-count ZIP
   entries;
-- enforces both declared ZIP sizes and actual streamed decompressed entry/total
-  byte limits;
-- converts malformed archives and memory exhaustion into a failed replay report;
+- enforces declared and actual streamed decompressed size limits;
+- converts malformed archives and memory exhaustion into a failed report;
 - validates manifest, attempt, command, report, trace, and replay schemas;
-- safely resolves every path read from internal JSON;
-- verifies the exact archive file set;
-- verifies file hashes and sizes;
-- verifies manifest semantic identity;
-- verifies task, language, adapter, attempt, trace, command, and stream links;
-- verifies actual candidate bytes against retained candidate hashes;
-- verifies trace sequence numbers;
+- safely resolves every internal path;
+- verifies the exact archive file set, hashes, sizes, semantic manifest identity,
+  candidate bytes, command streams, trace sequence, outcomes, and limits;
 - derives phase outcomes and the first failure from retained command/stream
   Evidence and budgets;
-- requires attempt, report, check-result trace, and score-decision trace values
-  to agree with the replay-derived decision.
+- requires attempt, report, check-result trace, and score-decision trace values to
+  agree with the replay-derived result.
 
-Any malformed or inconsistent bundle fails with
+Malformed or internally inconsistent bundles fail with
 `AX-BENCH-REPLAY-TAMPERED`.
 
-## 15. Findings
+### 15.2 Repository authority gate
+
+Only after internal replay passes, replay must:
+
+1. resolve `task_id` in the repository trusted-task registry;
+2. compare `task_sha256` with the registered task bytes;
+3. require the selected language variant to exist in that task;
+4. derive trust class from the adapter;
+5. derive expected success/failure from adapter and registered task acceptance;
+6. reject report or attempt disagreement.
+
+Authority disagreement fails with:
+
+```text
+AX-BENCH-REPLAY-AUTHORITY
+```
+
+This gate specifically rejects coherent bundle rewrites where an attacker
+repairs the manifest and internal hash chain but changes the registered task
+hash or relabels seeded-wrong Evidence as reference Evidence.
+
+## 16. Findings
 
 Stable categories include:
 
 ```text
+AX-BENCH-RUNNER-UNTRUSTED-TASK
+AX-BENCH-RUNNER-AUTHORITY
 AX-BENCH-RUNNER-INVALID-TASK
 AX-BENCH-RUNNER-INVALID-PATH
 AX-BENCH-RUNNER-SYMLINK
@@ -302,12 +367,13 @@ AX-BENCH-RUNNER-BUDGET
 AX-BENCH-RUNNER-CONFORMANCE
 AX-BENCH-SANDBOX-REQUIRED
 AX-BENCH-REPLAY-TAMPERED
+AX-BENCH-REPLAY-AUTHORITY
 ```
 
 Machine-readable findings contain code, path or phase, and message. Attempt and
 conformance-report documents share one exact failure-reason vocabulary.
 
-## 16. Explicit non-goals
+## 17. Explicit non-goals
 
 This capability does not provide:
 
@@ -319,8 +385,8 @@ This capability does not provide:
 - compiler installation;
 - operating-system CPU, memory, syscall, disk, or network quotas;
 - complete host filesystem mutation confinement;
-- cryptographic authenticity against an attacker who can consistently rewrite
-  every semantic document and hash without an external signature or
+- protection when the attacker can also rewrite the trusted repository registry
+  or replace the expected repository checkout without an external signature or
   transparency anchor;
 - multi-file full-agent editing;
 - statistical analysis or AI-first superiority evidence.

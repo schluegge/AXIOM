@@ -8,6 +8,7 @@
   "specification_path": "AXIOM_BENCH_SPEC.md",
   "preregistration_path": "AXIOM_BENCH_PREREGISTRATION.md",
   "source_evidence_path": "M1_BENCHMARK_SOURCE_EVIDENCE.md",
+  "trusted_task_registry_path": "benchmarks/contracts/0.1.0/trusted-tasks.json",
   "schema_paths": {
     "contract": "benchmarks/schemas/0.1.0/contract.schema.json",
     "suite": "benchmarks/schemas/0.1.0/suite.schema.json",

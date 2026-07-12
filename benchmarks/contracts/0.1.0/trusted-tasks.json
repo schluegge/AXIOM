@@ -1,0 +1,11 @@
+{
+  "$schema": "../../schemas/0.1.0/trusted-task-registry.schema.json",
+  "document_kind": "axiom.bench.trusted-task-registry",
+  "schema_version": "0.1.0",
+  "tasks": [
+    {
+      "task_id": "fixture.runner-conformance",
+      "task_path": "tests/fixtures/benchmark_runner/task.json"
+    }
+  ]
+}

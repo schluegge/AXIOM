@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import sys
 import tempfile
 import unittest
@@ -21,6 +20,7 @@ from axiom_bench.bundle import (
 )
 from axiom_bench.executor import execute_bounded, minimal_environment
 from axiom_bench.runner import expand_command
+from tests.benchmark_test_repository import create_trusted_test_repository
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "benchmark_runner"
@@ -41,20 +41,21 @@ class BenchmarkRunnerTests(unittest.TestCase):
         )
         return result
 
-    def copied_fixture(self) -> tuple[tempfile.TemporaryDirectory[str], Path, Path]:
+    def copied_fixture(
+        self,
+    ) -> tuple[tempfile.TemporaryDirectory[str], Path, Path, Path]:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         base = Path(temporary.name)
-        task_root = base / "task"
-        shutil.copytree(FIXTURE_ROOT, task_root)
-        return temporary, task_root / "task.json", base / "output"
+        repository_root, task_path = create_trusted_test_repository(base)
+        return temporary, repository_root, task_path, base / "output"
 
     def modify_task(self, mutator):
-        _, task_path, output = self.copied_fixture()
+        _, repository_root, task_path, output = self.copied_fixture()
         document = json.loads(task_path.read_text(encoding="utf-8"))
         mutator(document)
         task_path.write_text(canonical_json(document), encoding="utf-8")
-        return task_path, output
+        return repository_root, task_path, output
 
     def rewrite_bundle_report_path(self, bundle: Path, value: str) -> Path:
         destination = bundle.with_name(f"tampered-{len(value)}.zip")
@@ -205,10 +206,10 @@ class BenchmarkRunnerTests(unittest.TestCase):
         def mutate(document):
             del document["variants"]["axiom"]["candidate_path"]
 
-        task_path, output = self.modify_task(mutate)
+        repository_root, task_path, output = self.modify_task(mutate)
         with self.assertRaises(RunnerError) as context:
             run_conformance(
-                ROOT,
+                repository_root,
                 task_path,
                 language="axiom",
                 adapter="reference",
@@ -222,9 +223,9 @@ class BenchmarkRunnerTests(unittest.TestCase):
                 "axiom-command-that-does-not-exist"
             ]
 
-        task_path, output = self.modify_task(mutate)
+        repository_root, task_path, output = self.modify_task(mutate)
         result = run_conformance(
-            ROOT,
+            repository_root,
             task_path,
             language="axiom",
             adapter="reference",
@@ -242,9 +243,9 @@ class BenchmarkRunnerTests(unittest.TestCase):
         def mutate(document):
             document["budgets"]["max_compiler_invocations"] = 1
 
-        task_path, output = self.modify_task(mutate)
+        repository_root, task_path, output = self.modify_task(mutate)
         result = run_conformance(
-            ROOT,
+            repository_root,
             task_path,
             language="axiom",
             adapter="reference",
@@ -263,9 +264,9 @@ class BenchmarkRunnerTests(unittest.TestCase):
                 "print('feedback')",
             ]
 
-        task_path, output = self.modify_task(mutate)
+        repository_root, task_path, output = self.modify_task(mutate)
         result = run_conformance(
-            ROOT,
+            repository_root,
             task_path,
             language="axiom",
             adapter="reference",
@@ -283,9 +284,9 @@ class BenchmarkRunnerTests(unittest.TestCase):
                 "import time; time.sleep(30)",
             ]
 
-        task_path, output = self.modify_task(mutate)
+        repository_root, task_path, output = self.modify_task(mutate)
         result = run_conformance(
-            ROOT,
+            repository_root,
             task_path,
             language="axiom",
             adapter="reference",
