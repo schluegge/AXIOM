@@ -52,8 +52,8 @@ class ReviewContractTests(unittest.TestCase):
     def test_canonical_json_and_markdown_are_deterministic(self) -> None:
         report = valid_report()
         self.assertEqual(canonical_json(report), canonical_json(json.loads(canonical_json(report))))
-        self.assertEqual(render_markdown(report, SCHEMA), render_markdown(copy.deepcopy(report), SCHEMA))
-        self.assertIn("Status: **PASSED**", render_markdown(report, SCHEMA))
+        self.assertEqual(render_markdown(report), render_markdown(copy.deepcopy(report)))
+        self.assertIn("Status: **PASSED**", render_markdown(report))
 
     def test_external_dynamic_schema_reference_fails(self) -> None:
         schema = copy.deepcopy(SCHEMA)
@@ -141,7 +141,7 @@ class ReviewContractTests(unittest.TestCase):
         report["semantic_sha256"] = semantic_sha256(report)
         self.assert_code(report, "AX-REV-CONTRACT-2004")
         with self.assertRaisesRegex(ValueError, "AX-REV-CONTRACT-2004"):
-            render_markdown(report, SCHEMA)
+            render_markdown(report)
 
     def test_passed_report_rejects_every_nonpassing_check_conclusion(self) -> None:
         for conclusion in ("failed", "missing", "cancelled", "skipped", "unavailable", "stale"):
