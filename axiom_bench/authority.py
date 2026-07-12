@@ -60,10 +60,6 @@ def _load_json(path: Path, label: str) -> dict[str, Any]:
     return value
 
 
-def _schema(root: Path, relative: Path, label: str) -> dict[str, Any]:
-    return _load_json(root / relative, label)
-
-
 def _reject_symlinks(root: Path, path: Path, label: str) -> None:
     current = path
     while True:
@@ -78,8 +74,16 @@ def _reject_symlinks(root: Path, path: Path, label: str) -> None:
         current = current.parent
 
 
+def _schema(root: Path, relative: Path, label: str) -> dict[str, Any]:
+    path = root / relative
+    _reject_symlinks(root, path, label)
+    return _load_json(path, label)
+
+
 def _registry_path_from_contract(root: Path) -> tuple[Path, str]:
-    contract = _load_json(root / BENCHMARK_CONTRACT_PATH, BENCHMARK_CONTRACT_PATH.as_posix())
+    contract_path = root / BENCHMARK_CONTRACT_PATH
+    _reject_symlinks(root, contract_path, BENCHMARK_CONTRACT_PATH.as_posix())
+    contract = _load_json(contract_path, BENCHMARK_CONTRACT_PATH.as_posix())
     declared = contract.get("trusted_task_registry_path")
     if declared != REGISTRY_PATH.as_posix():
         raise AuthorityError(
