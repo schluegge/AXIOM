@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
+from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Iterable
@@ -11,6 +13,9 @@ from jsonschema.exceptions import SchemaError
 
 SCHEMA_VERSION = "0.1.0"
 SCHEMA_PATH = Path("review/contracts/0.1.0/report.schema.json")
+_RFC3339_DATETIME = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
 
 
 @dataclass(frozen=True, order=True)
@@ -45,6 +50,17 @@ def _walk_refs(value: Any, path: str = "$") -> Iterable[tuple[str, str]]:
             yield from _walk_refs(child, f"{path}[{index}]")
 
 
+def _is_rfc3339_datetime(value: str) -> bool:
+    if _RFC3339_DATETIME.fullmatch(value) is None:
+        return False
+    normalized = f"{value[:-1]}+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None
+
+
 def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     for path, reference in _walk_refs(schema):
@@ -68,6 +84,15 @@ def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Find
         )
     if findings:
         return sorted(findings)
+
+    if not _is_rfc3339_datetime(report["generated_at"]):
+        findings.append(
+            Finding(
+                "AX-REV-CONTRACT-1003",
+                "$.generated_at",
+                "schema violation (format): generated_at must be an RFC 3339 date-time with an explicit offset",
+            )
+        )
 
     reviewer_class = report["reviewer_class"]
     status = report["status"]
@@ -100,12 +125,13 @@ def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Find
             )
 
     has_blocker = any(item["authority"] == "blocking" for item in report_findings)
-    if status == "passed" and (has_blocker or report["unavailable"]):
+    has_nonpassing_check = any(item["conclusion"] != "passed" for item in report["checks"])
+    if status == "passed" and (has_blocker or has_nonpassing_check or report["unavailable"]):
         findings.append(
             Finding(
                 "AX-REV-CONTRACT-2004",
                 "$.status",
-                "passed report cannot contain blocking findings or unavailable sections",
+                "passed report cannot contain blocking findings, non-passing checks, or unavailable sections",
             )
         )
     if status == "passed" and len(report["reviewed_head_sha"]) != 40:
