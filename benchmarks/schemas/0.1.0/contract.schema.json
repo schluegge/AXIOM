@@ -35,7 +35,7 @@
     "schema_paths": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["contract", "suite", "task", "language_pack", "toolchains", "attempt", "run", "trace_event", "trusted_task_registry"],
+      "required": ["contract", "suite", "task", "language_pack", "toolchains", "attempt", "run", "trace_event"],
       "properties": {
         "contract": {"$ref": "#/$defs/path"},
         "suite": {"$ref": "#/$defs/path"},
@@ -44,8 +44,7 @@
         "toolchains": {"$ref": "#/$defs/path"},
         "attempt": {"$ref": "#/$defs/path"},
         "run": {"$ref": "#/$defs/path"},
-        "trace_event": {"$ref": "#/$defs/path"},
-        "trusted_task_registry": {"const": "benchmarks/schemas/0.1.0/trusted-task-registry.schema.json"}
+        "trace_event": {"$ref": "#/$defs/path"}
       }
     },
     "required_lanes": {
