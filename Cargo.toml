@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/axiom-protocol",
+    "crates/xtask",
+]
+
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.85"
+version = "0.1.0"
+
+[workspace.metadata.axiom]
+implemented-crates = ["axiom-protocol", "xtask"]
+planned-crates = [
+    "axiom-source",
+    "axiom-syntax",
+    "axiom-parser",
+    "axiom-ast",
+    "axiom-format",
+    "axiom-diagnostics",
+    "axiom-sema",
+    "axiom-hir",
+    "axiom-interpreter",
+    "axiom-wasm",
+    "axiom-component",
+    "axiom-runner",
+    "axiom-cli",
+]

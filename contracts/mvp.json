@@ -1,0 +1,98 @@
+{
+  "$schema": "./mvp.schema.json",
+  "authorities": [
+    {
+      "path": "spec/mvp/SOURCE_SEMANTICS.md",
+      "rank": 1,
+      "role": "source-semantics"
+    },
+    {
+      "path": "spec/mvp/HIR_CONTRACT.md",
+      "rank": 1,
+      "role": "hir-contract"
+    },
+    {
+      "path": "spec/mvp/CAPABILITY_CONTRACT.md",
+      "rank": 1,
+      "role": "capability-contract"
+    },
+    {
+      "path": "spec/mvp/DIAGNOSTIC_CONTRACT.md",
+      "rank": 1,
+      "role": "diagnostic-contract"
+    },
+    {
+      "path": "contracts/mvp.json",
+      "rank": 2,
+      "role": "machine-contract"
+    },
+    {
+      "path": "spec/mvp/RELEASE_GATE.md",
+      "rank": 3,
+      "role": "release-gate"
+    },
+    {
+      "path": "spec/mvp/MVP_SCOPE.md",
+      "rank": 4,
+      "role": "scope-summary"
+    }
+  ],
+  "claim_policy": "architecture_feasibility_only",
+  "document_kind": "axiom.mvp-contract",
+  "host_capabilities": [
+    "capability.fs.read-text",
+    "capability.fs.write-text"
+  ],
+  "legacy_baseline": {
+    "commit": "67bc156a6afdb12654fe8cbb6837e5d449cfd063",
+    "provenance_path": "legacy/provenance.json",
+    "repository": "schluegge/AXIOM"
+  },
+  "non_goals": [
+    "concurrency",
+    "general-unsafe",
+    "gui",
+    "macros",
+    "native-object-backend",
+    "networking",
+    "public-package-registry",
+    "reflection",
+    "self-hosting"
+  ],
+  "proof_stages": [
+    {
+      "command": "python tools/legacy_inventory.py --check",
+      "id": "legacy-provenance",
+      "status": "implemented"
+    },
+    {
+      "command": "python tools/check_mvp_contract.py",
+      "id": "mvp-contract",
+      "status": "implemented"
+    },
+    {
+      "command": "cargo xtask check",
+      "id": "rust-workspace",
+      "status": "implemented-unverified-in-sandbox"
+    }
+  ],
+  "schema_version": "0.1.0",
+  "source_features": [
+    "bool",
+    "checked-i64",
+    "explicit-result",
+    "functions",
+    "host-fs-read-text",
+    "host-fs-write-text",
+    "if-else",
+    "let-bindings",
+    "text",
+    "unit"
+  ],
+  "source_version": "0.1.0",
+  "status": "contracts-frozen",
+  "supported_hosts": [
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu"
+  ]
+}

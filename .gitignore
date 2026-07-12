@@ -13,3 +13,4 @@ target/
 *.wasm
 _evidence_work/
 evidence/AXIOM_*_EVIDENCE.zip
+.worktrees/

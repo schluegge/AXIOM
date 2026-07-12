@@ -1,0 +1,25 @@
+schema_version = "0.1.0"
+
+[[components]]
+name = "Rust"
+version = "1.85.1"
+source = "https://www.rust-lang.org/"
+license = "Apache-2.0 OR MIT"
+classification = "CAPABILITY_PROVIDER"
+justification = "Pinned compiler, formatter, linter, test runner, and Cargo workspace tooling."
+
+[[components]]
+name = "Python"
+version = ">=3.11"
+source = "https://www.python.org/"
+license = "Python-2.0"
+classification = "CAPABILITY_PROVIDER"
+justification = "Bootstrap-only deterministic contract and provenance checks until the Rust protocol loader is introduced."
+
+[[components]]
+name = "jsonschema"
+version = ">=4.0,<5"
+source = "https://github.com/python-jsonschema/jsonschema"
+license = "MIT"
+classification = "CAPABILITY_PROVIDER"
+justification = "Offline Draft 2020-12 validation for the frozen MVP contract."

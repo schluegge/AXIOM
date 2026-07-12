@@ -1,0 +1,45 @@
+{
+  "document_kind": "axiom.legacy-provenance",
+  "legacy_commit": "67bc156a6afdb12654fe8cbb6837e5d449cfd063",
+  "preserved_benchmarks": [
+    {
+      "git_blob_sha1": "e38e6cc44f03d92eba15ae19bf022b77a783db0c",
+      "path": "benchmarks/contracts/0.1.0/contract.json",
+      "sha256": "64a1c0dbf927f10ec5e95e0f39d54ee423f6e7142d1767c67edbb044a3b6458f"
+    }
+  ],
+  "preserved_specs": [
+    {
+      "git_blob_sha1": "5874806cba74ab0fef6a16692ac98188f07b1650",
+      "path": "CORE_SEMANTICS.md",
+      "sha256": "aef3cd3910e5ba927c77e1ac4f9511bdbd14e7cbbfadfd884d5c6c6e611565fa"
+    }
+  ],
+  "preserved_tests": [
+    {
+      "git_blob_sha1": "d93d838d1ce3d22b6288133c727a61c91c878750",
+      "path": "tests/test_project_contract.py",
+      "sha256": "9c09ec2a9755c817c70be6f32c013791df9ecc467f664bb1b720b61b202c05cd"
+    }
+  ],
+  "reset_candidates": [
+    {
+      "path": "axiom_proof/",
+      "reason": "legacy Python compiler implementation"
+    },
+    {
+      "path": "runtime/",
+      "reason": "legacy custom native runtime"
+    },
+    {
+      "path": "axiom_review/",
+      "reason": "review subsystem is not the AXIOM Next product"
+    },
+    {
+      "path": ".github/workflows/",
+      "reason": "routine proof must remain local-first"
+    }
+  ],
+  "schema_version": "0.1.0",
+  "source_repository": "schluegge/AXIOM"
+}

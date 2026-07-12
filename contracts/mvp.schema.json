@@ -1,0 +1,165 @@
+{
+  "$id": "https://github.com/schluegge/AXIOM/raw/main/contracts/mvp.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "const": "./mvp.schema.json"
+    },
+    "authorities": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$",
+            "type": "string"
+          },
+          "rank": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "role": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "rank",
+          "role",
+          "path"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "claim_policy": {
+      "const": "architecture_feasibility_only"
+    },
+    "document_kind": {
+      "const": "axiom.mvp-contract"
+    },
+    "host_capabilities": {
+      "items": {
+        "enum": [
+          "capability.fs.read-text",
+          "capability.fs.write-text"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "legacy_baseline": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "provenance_path": {
+          "const": "legacy/provenance.json"
+        },
+        "repository": {
+          "const": "schluegge/AXIOM"
+        }
+      },
+      "required": [
+        "repository",
+        "commit",
+        "provenance_path"
+      ],
+      "type": "object"
+    },
+    "non_goals": {
+      "items": {
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "proof_stages": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "implemented",
+              "implemented-unverified-in-sandbox",
+              "deferred"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "command",
+          "status"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "source_features": {
+      "items": {
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "source_version": {
+      "const": "0.1.0"
+    },
+    "status": {
+      "enum": [
+        "contracts-frozen",
+        "implementation-active",
+        "mvp-proven",
+        "blocked"
+      ]
+    },
+    "supported_hosts": {
+      "items": {
+        "enum": [
+          "x86_64-pc-windows-msvc",
+          "x86_64-unknown-linux-gnu"
+        ]
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "$schema",
+    "document_kind",
+    "schema_version",
+    "source_version",
+    "status",
+    "legacy_baseline",
+    "supported_hosts",
+    "source_features",
+    "host_capabilities",
+    "proof_stages",
+    "authorities",
+    "non_goals",
+    "claim_policy"
+  ],
+  "type": "object"
+}
