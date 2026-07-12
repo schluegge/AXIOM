@@ -13,6 +13,7 @@ from jsonschema.exceptions import SchemaError
 
 SCHEMA_VERSION = "0.1.0"
 SCHEMA_PATH = Path("review/contracts/0.1.0/report.schema.json")
+_PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 _RFC3339_DATETIME = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
 )
@@ -55,6 +56,18 @@ def semantic_sha256(report: dict[str, Any]) -> str:
     return sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _load_json_object(path: Path) -> tuple[dict[str, Any] | None, list[Finding]]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None, [Finding("AX-REV-CONTRACT-0001", str(path), "required JSON file is missing")]
+    except json.JSONDecodeError as error:
+        return None, [Finding("AX-REV-CONTRACT-0002", str(path), f"invalid JSON: {error.msg}")]
+    if not isinstance(value, dict):
+        return None, [Finding("AX-REV-CONTRACT-0003", str(path), "JSON root must be an object")]
+    return value, []
+
+
 def _walk_refs(value: Any, path: str = "$") -> Iterable[tuple[str, str]]:
     if isinstance(value, dict):
         for key, child in value.items():
@@ -79,7 +92,7 @@ def _is_rfc3339_datetime(value: str) -> bool:
 
 
 def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Finding]:
-    """Validate one report offline against schema and semantic authority laws."""
+    """Validate one report offline against a supplied schema and semantic laws."""
 
     findings: list[Finding] = []
     for path, reference in _walk_refs(schema):
@@ -175,23 +188,26 @@ def validate_report(report: dict[str, Any], schema: dict[str, Any]) -> list[Find
 
 
 def load_and_validate_report(root: Path, report_path: Path) -> tuple[dict[str, Any] | None, list[Finding]]:
-    """Load a report and the repository schema, then validate both offline."""
+    """Load a report and the selected repository schema, then validate offline."""
 
-    try:
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-        schema = json.loads((root / SCHEMA_PATH).read_text(encoding="utf-8"))
-    except FileNotFoundError as error:
-        return None, [Finding("AX-REV-CONTRACT-0001", str(error.filename), "required JSON file is missing")]
-    except json.JSONDecodeError as error:
-        return None, [Finding("AX-REV-CONTRACT-0002", str(report_path), f"invalid JSON: {error.msg}")]
-    if not isinstance(report, dict) or not isinstance(schema, dict):
-        return None, [Finding("AX-REV-CONTRACT-0003", str(report_path), "JSON root must be an object")]
+    report, findings = _load_json_object(report_path)
+    if findings:
+        return None, findings
+    schema, findings = _load_json_object(root / SCHEMA_PATH)
+    if findings:
+        return None, findings
+    assert report is not None
+    assert schema is not None
     return report, validate_report(report, schema)
 
 
-def render_markdown(report: dict[str, Any], schema: dict[str, Any]) -> str:
-    """Render a deterministic summary only after complete contract validation."""
+def render_markdown(report: dict[str, Any]) -> str:
+    """Render only after validation against the packaged repository schema."""
 
+    schema, validation_findings = _load_json_object(_PACKAGE_ROOT / SCHEMA_PATH)
+    if validation_findings:
+        raise InvalidReviewReport(validation_findings)
+    assert schema is not None
     validation_findings = validate_report(report, schema)
     if validation_findings:
         raise InvalidReviewReport(validation_findings)
