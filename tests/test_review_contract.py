@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import copy
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
-from axiom_review import canonical_json, render_markdown, semantic_sha256, validate_report
+from axiom_review import (
+    canonical_json,
+    load_and_validate_report,
+    render_markdown,
+    semantic_sha256,
+    validate_report,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA = json.loads((ROOT / "review/contracts/0.1.0/report.schema.json").read_text(encoding="utf-8"))
+SCHEMA_RELATIVE_PATH = Path("review/contracts/0.1.0/report.schema.json")
+SCHEMA = json.loads((ROOT / SCHEMA_RELATIVE_PATH).read_text(encoding="utf-8"))
 
 
 def valid_report(reviewer_class: str = "deterministic") -> dict[str, object]:
@@ -60,6 +68,19 @@ class ReviewContractTests(unittest.TestCase):
         schema["properties"]["repository"] = {"$dynamicRef": "https://example.invalid/review.schema.json"}
         findings = validate_report(valid_report(), schema)
         self.assertIn("AX-REV-CONTRACT-1001", {finding.code for finding in findings})
+
+    def test_invalid_schema_json_is_attributed_to_schema_path(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="axiom-review-contract-") as directory:
+            root = Path(directory)
+            schema_path = root / SCHEMA_RELATIVE_PATH
+            schema_path.parent.mkdir(parents=True)
+            schema_path.write_text("{invalid", encoding="utf-8")
+            report_path = root / "report.json"
+            report_path.write_text(canonical_json(valid_report()), encoding="utf-8")
+            report, findings = load_and_validate_report(root, report_path)
+        self.assertIsNone(report)
+        self.assertEqual([finding.code for finding in findings], ["AX-REV-CONTRACT-0002"])
+        self.assertEqual(findings[0].path, str(schema_path))
 
     def test_advisory_blocking_escalation_fails(self) -> None:
         report = valid_report("advisory_ai")
