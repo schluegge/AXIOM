@@ -11,6 +11,7 @@ from typing import Any
 from axiom_review.gate import (
     POLICY_PATH,
     POLICY_SCHEMA_PATH,
+    check_agent_b_registrations,
     check_proof_evidence,
     check_workflow_security,
     load_gate_policy,
@@ -267,6 +268,38 @@ def register() -> None:
             "AX-REV-GATE-0302",
         ),
     )
+
+    def dead_code_registration_blocked() -> str:
+        attack_root = _temporary_root()
+        try:
+            agents_dir = attack_root / "agents"
+            agents_dir.mkdir(parents=True)
+            (agents_dir / "agent_b_review.py").write_text(
+                "from agents.agent_b_contract_checks import register as register_contract\n"
+                "\n"
+                "\n"
+                "def _never_executed() -> None:\n"
+                "    register_contract()\n"
+                "\n"
+                "\n"
+                "def main() -> int:\n"
+                "    return 0\n",
+                encoding="utf-8",
+            )
+            outcome = check_agent_b_registrations(
+                attack_root,
+                {"agent_b_registration_modules": ["agents.agent_b_contract_checks"]},
+            )
+            require(outcome.conclusion == "failed", "dead-code registration was accepted")
+            require(
+                "AX-REV-GATE-0402" in _codes(outcome.findings),
+                f"expected AX-REV-GATE-0402, got {_codes(outcome.findings)}",
+            )
+        finally:
+            shutil.rmtree(attack_root, ignore_errors=True)
+        return "blocked with AX-REV-GATE-0402"
+
+    check("review-gate-dead-code-registration-blocked", dead_code_registration_blocked)
 
     def policy_traversal_blocked() -> str:
         attack_root = _temporary_root()
