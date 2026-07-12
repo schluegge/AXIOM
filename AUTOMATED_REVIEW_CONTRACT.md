@@ -18,13 +18,13 @@ A report with an absent or malformed exact head SHA is invalid. Later roadmap is
 
 Each finding has a stable code, title, explanation, severity, authority, evidence path, optional affected file/range, and remediation. A blocking finding requires non-empty evidence. Each check records its input digest, observed conclusion, and optional evidence path.
 
-The status enum is `passed`, `failed`, `unavailable`, or `stale`. A report marked `passed` is invalid when it contains blocking findings or unavailable sections. Rendering therefore cannot convert unavailable execution into a pass.
+The status enum is `passed`, `failed`, `unavailable`, or `stale`. A report marked `passed` is invalid when it contains blocking findings, non-passing checks, or unavailable sections. Rendering therefore cannot convert unavailable or failed execution into a pass.
 
 ## Canonicalization and rendering
 
 `canonical_json` emits UTF-8 JSON with sorted keys and one final newline. `semantic_sha256` hashes compact sorted-key JSON after removing only the digest field itself. Array order remains semantically meaningful.
 
-`render_markdown` produces a deterministic summary. It does not infer missing success and does not combine deterministic authority with advisory AI wording.
+`render_markdown` requires the report and its schema, runs the complete schema and semantic validator, and raises `InvalidReviewReport` when any finding exists. It produces a deterministic summary only for a valid report; callers cannot bypass validation and render a false `PASSED` status.
 
 ## Versioning and migration policy
 
@@ -44,6 +44,6 @@ Every version has an immutable versioned schema path. Existing schemas are not e
 - `AX-REV-CONTRACT-2001`: AI finding attempted blocking authority
 - `AX-REV-CONTRACT-2002`: non-deterministic blocking authority
 - `AX-REV-CONTRACT-2003`: blocking finding lacks evidence
-- `AX-REV-CONTRACT-2004`: false pass over blockers or unavailable sections
+- `AX-REV-CONTRACT-2004`: false pass over blockers, non-passing checks, or unavailable sections
 - `AX-REV-CONTRACT-2005`: semantic digest mismatch
 - `AX-REV-CONTRACT-2006`: passing report lacks exact reviewed-head identity
