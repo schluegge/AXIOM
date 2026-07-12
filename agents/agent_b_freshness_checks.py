@@ -48,7 +48,7 @@ def _source(
         reviewed_head_sha=head_sha,
         run_id=run_id,
         run_attempt=run_attempt,
-        artifact_name=artifact_name or f"{source_id}.zip",
+        artifact_name=artifact_name if artifact_name is not None else f"{source_id}.zip",
         artifact_digest=artifact_digest,
     )
 
