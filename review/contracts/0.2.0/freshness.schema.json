@@ -1,0 +1,35 @@
+{
+  "$id": "https://axiom.invalid/review/contracts/0.2.0/freshness.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "definitions": {
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_digest": {"anyOf": [{"pattern": "^sha256:[0-9a-f]{64}$", "type": "string"}, {"type": "null"}]},
+        "artifact_name": {"anyOf": [{"minLength": 1, "pattern": "^[^/\\\\]+$", "type": "string"}, {"type": "null"}]},
+        "conclusion": {"enum": ["passed", "failed", "missing", "pending", "cancelled", "skipped", "unavailable", "stale"]},
+        "reviewed_head_sha": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+        "run_attempt": {"minimum": 1, "type": "integer"},
+        "run_id": {"minimum": 1, "type": "integer"},
+        "source_id": {"pattern": "^[a-z0-9][a-z0-9._-]*$", "type": "string"}
+      },
+      "required": ["source_id", "conclusion", "reviewed_head_sha", "run_id", "run_attempt", "artifact_name", "artifact_digest"],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "base_sha": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+    "current_head_sha": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+    "document_kind": {"const": "axiom.automated-review.freshness"},
+    "publisher_run_attempt": {"minimum": 1, "type": "integer"},
+    "publisher_run_id": {"minimum": 1, "type": "integer"},
+    "pull_request_number": {"minimum": 1, "type": "integer"},
+    "repository": {"pattern": "^[^/]+/[^/]+$", "type": "string"},
+    "schema_version": {"const": "0.2.0"},
+    "semantic_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "sources": {"items": {"$ref": "#/definitions/source"}, "minItems": 1, "type": "array"}
+  },
+  "required": ["document_kind", "schema_version", "repository", "pull_request_number", "base_sha", "current_head_sha", "publisher_run_id", "publisher_run_attempt", "sources", "semantic_sha256"],
+  "type": "object"
+}
