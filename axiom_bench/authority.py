@@ -8,6 +8,7 @@ from typing import Any
 from .bundle import safe_join, sha256_file
 from .contract import validate_document
 
+BENCHMARK_CONTRACT_PATH = Path("benchmarks/contracts/0.1.0/contract.json")
 REGISTRY_PATH = Path("benchmarks/contracts/0.1.0/trusted-tasks.json")
 REGISTRY_SCHEMA_PATH = Path("benchmarks/schemas/0.1.0/trusted-task-registry.schema.json")
 TASK_SCHEMA_PATH = Path("benchmarks/schemas/0.1.0/task.schema.json")
@@ -77,12 +78,33 @@ def _reject_symlinks(root: Path, path: Path, label: str) -> None:
         current = current.parent
 
 
+def _registry_path_from_contract(root: Path) -> tuple[Path, str]:
+    contract = _load_json(root / BENCHMARK_CONTRACT_PATH, BENCHMARK_CONTRACT_PATH.as_posix())
+    declared = contract.get("trusted_task_registry_path")
+    if declared != REGISTRY_PATH.as_posix():
+        raise AuthorityError(
+            "AX-BENCH-AUTHORITY-CONTRACT",
+            f"{BENCHMARK_CONTRACT_PATH.as_posix()}:$.trusted_task_registry_path",
+            f"benchmark contract must declare {REGISTRY_PATH.as_posix()!r}; got {declared!r}",
+        )
+    try:
+        registry_path = safe_join(root, declared)
+    except (TypeError, ValueError) as error:
+        raise AuthorityError(
+            "AX-BENCH-AUTHORITY-INVALID-PATH",
+            f"{BENCHMARK_CONTRACT_PATH.as_posix()}:$.trusted_task_registry_path",
+            str(error),
+        ) from error
+    _reject_symlinks(root, registry_path, BENCHMARK_CONTRACT_PATH.as_posix())
+    return registry_path, declared
+
+
 def _registered_tasks(repository_root: Path) -> tuple[TrustedTaskAuthority, ...]:
     root = repository_root.resolve()
-    registry_path = root / REGISTRY_PATH
-    registry = _load_json(registry_path, REGISTRY_PATH.as_posix())
+    registry_path, registry_label = _registry_path_from_contract(root)
+    registry = _load_json(registry_path, registry_label)
     registry_schema = _schema(root, REGISTRY_SCHEMA_PATH, REGISTRY_SCHEMA_PATH.as_posix())
-    findings = validate_document(registry, registry_schema, label=REGISTRY_PATH.as_posix())
+    findings = validate_document(registry, registry_schema, label=registry_label)
     if findings:
         first = findings[0]
         raise AuthorityError(
@@ -93,7 +115,7 @@ def _registered_tasks(repository_root: Path) -> tuple[TrustedTaskAuthority, ...]
     if registry.get("$schema") != "../../schemas/0.1.0/trusted-task-registry.schema.json":
         raise AuthorityError(
             "AX-BENCH-AUTHORITY-INVALID",
-            f"{REGISTRY_PATH.as_posix()}:$.$schema",
+            f"{registry_label}:$.$schema",
             "trusted task registry must reference the canonical local schema",
         )
 
@@ -104,11 +126,11 @@ def _registered_tasks(repository_root: Path) -> tuple[TrustedTaskAuthority, ...]
     for index, entry in enumerate(registry["tasks"]):
         task_id = entry["task_id"]
         relative = entry["task_path"]
-        label = f"{REGISTRY_PATH.as_posix()}:$.tasks[{index}].task_path"
+        label = f"{registry_label}:$.tasks[{index}].task_path"
         if task_id in seen_ids:
             raise AuthorityError(
                 "AX-BENCH-AUTHORITY-DUPLICATE",
-                f"{REGISTRY_PATH.as_posix()}:$.tasks[{index}].task_id",
+                f"{registry_label}:$.tasks[{index}].task_id",
                 f"duplicate trusted task id: {task_id}",
             )
         if relative in seen_paths:
