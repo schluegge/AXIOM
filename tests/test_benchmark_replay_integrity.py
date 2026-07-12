@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import io
 import json
-import shutil
 import tempfile
 import unittest
 import zipfile
@@ -17,6 +16,7 @@ from axiom_bench.bundle import (
     semantic_sha256,
     sha256_bytes,
 )
+from tests.benchmark_test_repository import create_trusted_test_repository
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "benchmark_runner"
@@ -116,9 +116,7 @@ class BenchmarkReplayIntegrityTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         base = Path(temporary.name)
-        task_root = base / "task"
-        shutil.copytree(FIXTURE_ROOT, task_root)
-        task_path = task_root / "task.json"
+        repository_root, task_path = create_trusted_test_repository(base)
         task = json.loads(task_path.read_text(encoding="utf-8"))
         task["variants"]["axiom"]["formatter_command"] = [
             "{python}",
@@ -129,14 +127,14 @@ class BenchmarkReplayIntegrityTests(unittest.TestCase):
         task_path.write_text(canonical_json(task), encoding="utf-8")
 
         first = run_conformance(
-            ROOT,
+            repository_root,
             task_path,
             language="axiom",
             adapter="reference",
             output_directory=base / "first",
         )
         second = run_conformance(
-            ROOT,
+            repository_root,
             task_path,
             language="axiom",
             adapter="reference",
