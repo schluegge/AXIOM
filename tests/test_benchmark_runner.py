@@ -215,7 +215,7 @@ class BenchmarkRunnerTests(unittest.TestCase):
                 adapter="reference",
                 output_directory=output,
             )
-        self.assertEqual(context.exception.finding.code, "AX-BENCH-RUNNER-AUTHORITY")
+        self.assertEqual(context.exception.finding.code, "AX-BENCH-RUNNER-INVALID-TASK")
 
     def test_runner_records_process_start_failure(self) -> None:
         def mutate(document):
