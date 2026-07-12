@@ -59,7 +59,7 @@ def _walk_refs(value: Any, path: str = "$") -> Iterable[tuple[str, str]]:
     if isinstance(value, dict):
         for key, child in value.items():
             child_path = f"{path}.{key}"
-            if key == "$ref" and isinstance(child, str):
+            if key in {"$ref", "$dynamicRef"} and isinstance(child, str):
                 yield child_path, child
             yield from _walk_refs(child, child_path)
     elif isinstance(value, list):
