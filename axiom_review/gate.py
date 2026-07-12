@@ -589,6 +589,31 @@ def check_protected_baseline(
     )
 
 
+def _unconditional_calls(function: ast.FunctionDef) -> set[str]:
+    """Collect name calls that execute unconditionally when the function runs.
+
+    Only statement-level calls in the linear body are counted, descending
+    solely through ``try``/``finally`` blocks. Calls inside conditional
+    branches, loops, ``with`` blocks, nested functions, or other constructs
+    that may never execute do not count.
+    """
+
+    called: set[str] = set()
+    stack: list[ast.stmt] = list(function.body)
+    while stack:
+        statement = stack.pop()
+        if isinstance(statement, ast.Try):
+            stack.extend(statement.body)
+            stack.extend(statement.finalbody)
+        elif (
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Call)
+            and isinstance(statement.value.func, ast.Name)
+        ):
+            called.add(statement.value.func.id)
+    return called
+
+
 def check_agent_b_registrations(root: Path, policy: dict[str, Any] | None) -> CheckOutcome:
     """Require every policy-listed Agent B module to stay invoked from main()."""
 
@@ -617,11 +642,7 @@ def check_agent_b_registrations(root: Path, policy: dict[str, Any] | None) -> Ch
         if main_function is None:
             error = "agents/agent_b_review.py has no top-level main() function"
         else:
-            called = {
-                node.func.id
-                for node in ast.walk(main_function)
-                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-            }
+            called = _unconditional_calls(main_function)
     findings: list[dict[str, Any]] = []
     missing: list[str] = []
     if policy is not None:
