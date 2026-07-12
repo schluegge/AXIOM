@@ -18,13 +18,13 @@ A report with an absent or malformed exact head SHA is invalid. Later roadmap is
 
 Each finding has a stable code, title, explanation, severity, authority, evidence path, optional affected file/range, and remediation. A blocking finding requires non-empty evidence. Each check records its input digest, observed conclusion, and optional evidence path.
 
-The status enum is `passed`, `failed`, `unavailable`, or `stale`. A report marked `passed` is invalid when it contains blocking findings, non-passing checks, or unavailable sections. Rendering therefore cannot convert unavailable or failed execution into a pass.
+The status enum is `passed`, `failed`, `unavailable`, or `stale`. A report marked `passed` requires at least one recorded passing check and is invalid when it contains blocking findings, any non-passing check, or unavailable sections. Rendering therefore cannot convert absent, unavailable, or failed execution into a pass.
 
 ## Canonicalization and rendering
 
 `canonical_json` emits UTF-8 JSON with sorted keys and one final newline. `semantic_sha256` hashes compact sorted-key JSON after removing only the digest field itself. Array order remains semantically meaningful.
 
-`validate_report` is the low-level offline validator for an explicitly supplied schema. It rejects non-local `$ref` and `$dynamicRef` targets before constructing the Draft 2020-12 validator.
+`validate_report` is the low-level offline validator for an explicitly supplied schema. It rejects non-local `$ref` and `$dynamicRef` targets before constructing the Draft 2020-12 validator. A local reference that cannot be resolved is converted into stable schema finding `AX-REV-CONTRACT-1002` rather than escaping as a library exception.
 
 `render_markdown` accepts only the report. It loads the packaged schema from the immutable versioned repository path, runs the complete schema and semantic validator, and raises `InvalidReviewReport` when the schema cannot be loaded or any finding exists. A caller cannot substitute a permissive schema and render an invalid report as `PASSED`.
 
@@ -48,11 +48,11 @@ Every version has an immutable versioned schema path. Existing schemas are not e
 - `AX-REV-CONTRACT-0002`: report or schema JSON is malformed
 - `AX-REV-CONTRACT-0003`: report or schema JSON root is not an object
 - `AX-REV-CONTRACT-1001`: external schema reference
-- `AX-REV-CONTRACT-1002`: invalid Draft 2020-12 schema
+- `AX-REV-CONTRACT-1002`: invalid Draft 2020-12 schema or unresolvable local schema reference
 - `AX-REV-CONTRACT-1003`: report schema violation, including unknown fields and invalid enums
 - `AX-REV-CONTRACT-2001`: AI finding attempted blocking authority
 - `AX-REV-CONTRACT-2002`: non-deterministic blocking authority
 - `AX-REV-CONTRACT-2003`: blocking finding lacks evidence
-- `AX-REV-CONTRACT-2004`: false pass over blockers, non-passing checks, or unavailable sections
+- `AX-REV-CONTRACT-2004`: false pass over absent checks, blockers, non-passing checks, or unavailable sections
 - `AX-REV-CONTRACT-2005`: semantic digest mismatch
 - `AX-REV-CONTRACT-2006`: passing report lacks exact reviewed-head identity
