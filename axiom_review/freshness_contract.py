@@ -14,7 +14,7 @@ from .freshness import SourceResult, validate_freshness
 FRESHNESS_SCHEMA_VERSION = "0.2.0"
 FRESHNESS_SCHEMA_PATH = Path("review/contracts/0.2.0/freshness.schema.json")
 _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
-_MARKDOWN_SPECIAL = re.compile(r"([\`*_{}\[\]()#+\-.!|>])")
+_MARKDOWN_SPECIAL = re.compile(r"([\`*_{}\[\]()#+!|>])")
 
 
 def _markdown_text(value: Any) -> str:
