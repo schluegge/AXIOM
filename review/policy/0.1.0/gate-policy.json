@@ -39,6 +39,7 @@
     "benchmarks/schemas/0.1.0/trusted-task-registry.schema.json",
     "contracts/project.json",
     "contracts/project.schema.json",
+    "docs/superpowers/specs/2026-07-12-rev4-exact-head-staleness-design.md",
     "requirements-proof.txt",
     "review/contracts/0.1.0/gate-policy.schema.json",
     "review/contracts/0.1.0/report.schema.json",
