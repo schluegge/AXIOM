@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from axiom_bench import RunnerError, replay_conformance, run_conformance
 from axiom_bench.bundle import canonical_json, semantic_sha256, sha256_bytes
+from tests.benchmark_test_repository import create_trusted_test_repository
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "benchmark_runner"
@@ -30,14 +31,15 @@ class TrustedTaskAuthorityTests(unittest.TestCase):
                 "sha256": sha256_bytes(payload),
                 "size_bytes": len(payload),
             }
-        semantic_payload = {
-            "bundle_kind": manifest["bundle_kind"],
-            "task_id": manifest["task_id"],
-            "language": manifest["language"],
-            "adapter": manifest["adapter"],
-            "files": manifest["files"],
-        }
-        manifest["semantic_sha256"] = semantic_sha256(semantic_payload)
+        manifest["semantic_sha256"] = semantic_sha256(
+            {
+                "bundle_kind": manifest["bundle_kind"],
+                "task_id": manifest["task_id"],
+                "language": manifest["language"],
+                "adapter": manifest["adapter"],
+                "files": manifest["files"],
+            }
+        )
         files["bundle-manifest.json"] = canonical_json(manifest).encode("utf-8")
 
     def rewrite_seeded_wrong_bundle_as_reference(self, bundle: Path, destination: Path) -> None:
@@ -91,10 +93,29 @@ class TrustedTaskAuthorityTests(unittest.TestCase):
                         output_directory=output,
                     )
 
-            self.assertEqual(
-                context.exception.finding.code,
-                "AX-BENCH-RUNNER-UNTRUSTED-TASK",
-            )
+            self.assertEqual(context.exception.finding.code, "AX-BENCH-RUNNER-UNTRUSTED-TASK")
+            self.assertFalse(output.exists())
+
+    def test_runner_rejects_registry_path_drift_from_benchmark_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            repository_root, task_path = create_trusted_test_repository(base)
+            contract_path = repository_root / "benchmarks" / "contracts" / "0.1.0" / "contract.json"
+            contract = json.loads(contract_path.read_text(encoding="utf-8"))
+            contract["trusted_task_registry_path"] = "benchmarks/contracts/0.1.0/other.json"
+            contract_path.write_text(canonical_json(contract), encoding="utf-8")
+            output = base / "output"
+
+            with self.assertRaises(RunnerError) as context:
+                run_conformance(
+                    repository_root,
+                    task_path,
+                    language="axiom",
+                    adapter="reference",
+                    output_directory=output,
+                )
+
+            self.assertEqual(context.exception.finding.code, "AX-BENCH-RUNNER-AUTHORITY")
             self.assertFalse(output.exists())
 
     def test_replay_rejects_reference_expectation_redefined_inside_bundle(self) -> None:
@@ -109,17 +130,13 @@ class TrustedTaskAuthorityTests(unittest.TestCase):
             )
             rewritten = root / "rewritten-reference.zip"
             self.rewrite_seeded_wrong_bundle_as_reference(result.bundle_path, rewritten)
-
             replay = replay_conformance(ROOT, rewritten)
 
         self.assertEqual(replay["status"], "failed", replay)
-        self.assertIn(
-            "AX-BENCH-REPLAY-AUTHORITY",
-            {finding["code"] for finding in replay["findings"]},
-        )
+        self.assertIn("AX-BENCH-REPLAY-AUTHORITY", {item["code"] for item in replay["findings"]})
         self.assertIn(
             "conformance-report.expected_outcome",
-            {finding["path"] for finding in replay["findings"]},
+            {item["path"] for item in replay["findings"]},
         )
 
     def test_replay_rejects_task_hash_rewritten_with_repaired_manifest(self) -> None:
@@ -134,13 +151,12 @@ class TrustedTaskAuthorityTests(unittest.TestCase):
             )
             rewritten = root / "rewritten-task-hash.zip"
             self.rewrite_report_task_hash(result.bundle_path, rewritten)
-
             replay = replay_conformance(ROOT, rewritten)
 
         self.assertEqual(replay["status"], "failed", replay)
         self.assertIn(
             "conformance-report.task_sha256",
-            {finding["path"] for finding in replay["findings"]},
+            {item["path"] for item in replay["findings"]},
         )
 
 
