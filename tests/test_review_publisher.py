@@ -149,7 +149,7 @@ class PublicationEventTests(unittest.TestCase):
         self.assertIsNone(run.pull_request_number_hint)
         self.assertEqual(run.reviewed_head_sha, "2" * 40)
 
-    def test_associated_pull_request_resolves_full_publication_identity(self) -> None:
+    def test_associated_pull_request_resolves_run_bound_identity_before_artifact_base_binding(self) -> None:
         run = parse_workflow_run_event(
             self._workflow_event([]),
             expected_workflow_name="AXIOM deterministic review",
@@ -158,7 +158,12 @@ class PublicationEventTests(unittest.TestCase):
             run,
             [{"number": 35, "head": {"sha": "2" * 40}, "base": {"sha": "1" * 40}}],
         )
-        self.assertEqual(identity, fixture_identity(run_id=100, attempt=2))
+        self.assertEqual(identity.repository, "schluegge/AXIOM")
+        self.assertEqual(identity.pull_request_number, 35)
+        self.assertIsNone(identity.base_sha)
+        self.assertEqual(identity.reviewed_head_sha, "2" * 40)
+        self.assertEqual(identity.workflow_run_id, 100)
+        self.assertEqual(identity.workflow_run_attempt, 2)
 
     def test_associated_pull_request_resolution_fails_closed_on_none_or_many(self) -> None:
         run = parse_workflow_run_event(
@@ -176,7 +181,7 @@ class PublicationEventTests(unittest.TestCase):
                 with self.assertRaisesRegex(PublicationRejected, "exactly one associated pull request"):
                     resolve_publication_identity(run, associated)
 
-    def test_event_hint_filters_commit_associations_and_wrong_head_is_rejected(self) -> None:
+    def test_event_hint_filters_commit_associations_without_binding_mutable_live_head(self) -> None:
         run = parse_workflow_run_event(
             self._workflow_event([{"number": 35, "head": {"sha": "2" * 40}}]),
             expected_workflow_name="AXIOM deterministic review",
@@ -189,11 +194,13 @@ class PublicationEventTests(unittest.TestCase):
             ],
         )
         self.assertEqual(identity.pull_request_number, 35)
-        with self.assertRaisesRegex(PublicationRejected, "exactly one associated pull request"):
-            resolve_publication_identity(
-                run,
-                [{"number": 35, "head": {"sha": "9" * 40}, "base": {"sha": "1" * 40}}],
-            )
+        advanced = resolve_publication_identity(
+            run,
+            [{"number": 35, "head": {"sha": "9" * 40}, "base": {"sha": "8" * 40}}],
+        )
+        self.assertEqual(advanced.pull_request_number, 35)
+        self.assertEqual(advanced.reviewed_head_sha, "2" * 40)
+        self.assertIsNone(advanced.base_sha)
 
     def test_envelope_binds_report_and_summary_bytes(self) -> None:
         identity = fixture_identity()
