@@ -23,6 +23,7 @@ from agents.agent_b_freshness_checks import register as register_freshness
 from agents.agent_b_lvalue_checks import register as register_lvalues
 from agents.agent_b_reference_checks import register as register_references
 from agents.agent_b_review_gate_checks import register as register_review_gate
+from agents.agent_b_review_publisher_checks import register as register_review_publisher
 from agents.agent_b_trusted_task_authority_checks import register as register_trusted_task_authority
 
 
@@ -43,6 +44,7 @@ def main() -> int:
         register_trusted_task_authority()
         register_review_gate()
         register_freshness()
+        register_review_publisher()
         register_aggregate_semantics()
         register_aggregate_layout()
         register_aggregate_generated()
