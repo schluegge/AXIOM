@@ -29,6 +29,7 @@
     "axiom_review/publisher_artifact.py",
     "axiom_review/publisher_core.py",
     "axiom_review/publisher_github.py",
+    "axiom_review/publisher_live_identity.py",
     "benchmarks/contracts/0.1.0/contract.json",
     "benchmarks/contracts/0.1.0/trusted-tasks.json",
     "benchmarks/schemas/0.1.0/attempt.schema.json",
