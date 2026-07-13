@@ -54,9 +54,14 @@ def _validate_limits(limits: ArtifactLimits) -> None:
     _reject(limits.max_summary_bytes > limits.max_file_bytes, "summary limit exceeds file limit")
 
 
-def _read_archive_entries(archive_bytes: bytes, limits: ArtifactLimits) -> dict[str, bytes]:
+def _read_archive_entries(
+    archive_bytes: bytes,
+    limits: ArtifactLimits,
+    expected_identity: PublicationIdentity,
+) -> dict[str, bytes]:
     _validate_limits(limits)
     _reject(len(archive_bytes) > limits.max_archive_bytes, "archive exceeds byte limit")
+    expected_proof_path = f"axiom-repo-proof-{expected_identity.workflow_run_id}.zip"
     try:
         archive = zipfile.ZipFile(io.BytesIO(archive_bytes), "r")
     except (zipfile.BadZipFile, OSError) as error:
@@ -81,7 +86,7 @@ def _read_archive_entries(archive_bytes: bytes, limits: ArtifactLimits) -> dict[
                 _reject(info.file_size > limits.max_report_bytes, "report exceeds byte limit")
             elif name == "review-summary.md":
                 _reject(info.file_size > limits.max_summary_bytes, "summary exceeds byte limit")
-            else:
+            elif name != expected_proof_path:
                 _reject(info.file_size > limits.max_file_bytes, f"archive file exceeds byte limit: {name}")
             total_uncompressed += info.file_size
             _reject(
@@ -196,7 +201,7 @@ def inspect_publication_archive(
 ) -> PublicationBundle:
     """Inspect a raw artifact ZIP in memory without extracting untrusted paths."""
 
-    entries = _read_archive_entries(archive_bytes, limits)
+    entries = _read_archive_entries(archive_bytes, limits, expected_identity)
     envelope = _read_json_object(entries["publication-envelope.json"], "publication envelope")
     (
         report_path,
