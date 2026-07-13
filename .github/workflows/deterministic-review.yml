@@ -79,6 +79,23 @@ jobs:
           --proof-artifact-name "$PROOF_ARTIFACT_NAME"
           --proof-artifact-digest "$PROOF_ARTIFACT_DIGEST"
 
+      - name: Bind review output to the workflow-run identity
+        if: always()
+        env:
+          ARTIFACT_NAME: axiom-deterministic-review-${{ github.run_id }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >
+          python3 tools/create_review_publication_envelope.py
+          --event "$GITHUB_EVENT_PATH"
+          --report evidence/deterministic-review/review-report.json
+          --summary evidence/deterministic-review/review-summary.md
+          --output evidence/deterministic-review/publication-envelope.json
+          --workflow-run-id "${{ github.run_id }}"
+          --workflow-run-attempt "${{ github.run_attempt }}"
+          --workflow-name "${{ github.workflow }}"
+          --workflow-run-url "$WORKFLOW_RUN_URL"
+          --artifact-name "$ARTIFACT_NAME"
+
       - name: Upload deterministic review artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
