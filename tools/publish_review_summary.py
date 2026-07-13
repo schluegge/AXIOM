@@ -25,6 +25,7 @@ from axiom_review.publisher import (  # noqa: E402
     GitHubRestApi,
     PublicationDecision,
     PublicationRejected,
+    ensure_trusted_gate_inputs_unchanged,
     find_existing_publication_comment,
     inspect_publication_archive,
     parse_workflow_run_event,
@@ -34,6 +35,7 @@ from axiom_review.publisher import (  # noqa: E402
 )
 
 ENVELOPE_SCHEMA_PATH = Path("review/contracts/0.1.0/publication-envelope.schema.json")
+GATE_POLICY_PATH = Path("review/policy/0.1.0/gate-policy.json")
 EXPECTED_WORKFLOW_NAME = "AXIOM deterministic review"
 LIMITS = ArtifactLimits(
     max_archive_bytes=20_000_000,
@@ -112,6 +114,31 @@ def _current_head(pull_request: dict[str, Any], expected_number: int) -> str:
     return sha
 
 
+def _protected_paths(root: Path) -> list[str]:
+    policy = _load_json_object(root / GATE_POLICY_PATH, "deterministic review gate policy")
+    value = policy.get("protected_paths")
+    if not isinstance(value, list) or not value:
+        raise PublicationRejected("deterministic review gate policy has no protected paths")
+    paths: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item:
+            raise PublicationRejected("deterministic review gate policy contains an invalid protected path")
+        paths.append(item)
+    if len(paths) != len(set(paths)):
+        raise PublicationRejected("deterministic review gate policy contains duplicate protected paths")
+    return paths
+
+
+def _changed_paths(files: list[dict[str, Any]]) -> list[str]:
+    paths: list[str] = []
+    for item in files:
+        filename = item.get("filename")
+        if not isinstance(filename, str) or not filename:
+            raise PublicationRejected("GitHub pull request file lacks a valid filename")
+        paths.append(filename)
+    return paths
+
+
 def publish(event_path: Path, root: Path, token: str, api_url: str) -> dict[str, Any]:
     event = _load_json_object(event_path, "workflow_run event")
     run_identity = parse_workflow_run_event(event, expected_workflow_name=EXPECTED_WORKFLOW_NAME)
@@ -121,6 +148,11 @@ def publish(event_path: Path, root: Path, token: str, api_url: str) -> dict[str,
         api.list_pull_requests_for_commit(
             run_identity.repository, run_identity.reviewed_head_sha
         ),
+    )
+
+    ensure_trusted_gate_inputs_unchanged(
+        _changed_paths(api.list_pull_request_files(identity.repository, identity.pull_request_number)),
+        _protected_paths(root),
     )
 
     artifact = _select_artifact(
