@@ -96,13 +96,23 @@ jobs:
           --workflow-run-url "$WORKFLOW_RUN_URL"
           --artifact-name "$ARTIFACT_NAME"
 
+      - name: Stage root-bound publication artifact
+        if: always()
+        env:
+          PROOF_ARTIFACT_NAME: ${{ steps.proof-artifact.outputs.name }}
+        run: |
+          rm -rf evidence/review-publication-artifact
+          mkdir -p evidence/review-publication-artifact
+          cp evidence/deterministic-review/publication-envelope.json evidence/review-publication-artifact/publication-envelope.json
+          cp evidence/deterministic-review/review-report.json evidence/review-publication-artifact/review-report.json
+          cp evidence/deterministic-review/review-summary.md evidence/review-publication-artifact/review-summary.md
+          cp "evidence/$PROOF_ARTIFACT_NAME" "evidence/review-publication-artifact/$PROOF_ARTIFACT_NAME"
+
       - name: Upload deterministic review artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: axiom-deterministic-review-${{ github.run_id }}
-          path: |
-            evidence/deterministic-review/
-            evidence/axiom-repo-proof-${{ github.run_id }}.zip
+          path: evidence/review-publication-artifact/
           if-no-files-found: error
           retention-days: 14
