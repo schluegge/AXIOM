@@ -123,8 +123,17 @@ contract with offline validation and safe deterministic rendering.
 review gate: one offline command that recomputes the repository contracts,
 verifies exact-head proof evidence, enforces a versioned protected baseline,
 rejects unpinned actions, `pull_request_target` triggers, and widened workflow
-permissions, and fails closed. AI review remains advisory-only by contract and
-is not implemented; no comment publication or merge authority exists.
+permissions, and fails closed.
+
+`review.safe-publisher-0.1` adds the privileged half of the two-stage boundary.
+The read-only PR workflow uploads a digest-bound publication envelope while the
+separate default-branch `workflow_run` publisher validates the raw ZIP without
+extraction, checks repository/PR/run/head identity and trusted rendering, and
+creates or updates one bounded marker comment. Older or stale runs cannot
+overwrite a newer current publication. The publisher never checks out or
+executes pull-request code and has no approval, merge, auto-merge, label, or
+branch-policy authority. AI review remains advisory-only by contract and is not
+implemented.
 
 ```bash
 python3 run_repo_proof.py
