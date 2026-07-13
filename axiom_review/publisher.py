@@ -1,4 +1,4 @@
-from .publisher_artifact import inspect_publication_archive
+from .publisher_artifact import inspect_publication_archive as _legacy_inspect_publication_archive
 from .publisher_core import (
     ArtifactLimits,
     ExistingPublication,
@@ -13,9 +13,9 @@ from .publisher_core import (
     parse_workflow_run_event,
     publication_decision,
     render_publication_comment,
-    resolve_publication_identity,
 )
 from .publisher_github import GitHubRestApi, HttpResponse
+from .publisher_live_identity import inspect_publication_archive, resolve_publication_identity
 
 __all__ = [
     "ArtifactLimits",
