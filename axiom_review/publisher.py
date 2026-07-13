@@ -15,6 +15,7 @@ from .publisher_core import (
 )
 from .publisher_github import GitHubRestApi, HttpResponse
 from .publisher_live_identity import inspect_publication_archive, resolve_publication_identity
+from .publisher_trust import ensure_trusted_gate_inputs_unchanged
 
 __all__ = [
     "ArtifactLimits",
@@ -27,6 +28,7 @@ __all__ = [
     "PublicationRejected",
     "WorkflowRunIdentity",
     "create_publication_envelope",
+    "ensure_trusted_gate_inputs_unchanged",
     "find_existing_publication_comment",
     "inspect_publication_archive",
     "parse_existing_publication",
