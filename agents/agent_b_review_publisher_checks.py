@@ -124,22 +124,71 @@ def register() -> None:
             permissions == {"actions": "read", "contents": "read", "pull-requests": "write"},
             f"publisher permissions widened or incomplete: {permissions!r}",
         )
+        jobs = workflow.get("jobs")
+        require(isinstance(jobs, dict), "publisher jobs are missing")
+        job = jobs.get("publish-review")
+        require(isinstance(job, dict), "publisher job is missing")
+        require(job.get("permissions", permissions) == permissions, "publisher job overrides minimal permissions")
+        steps = job.get("steps")
+        require(isinstance(steps, list), "publisher steps are missing")
+        checkout = [
+            step
+            for step in steps
+            if isinstance(step, dict) and str(step.get("uses", "")).startswith("actions/checkout@")
+        ]
+        require(len(checkout) == 1, "publisher must have exactly one checkout step")
+        checkout_with = checkout[0].get("with")
+        require(isinstance(checkout_with, dict), "publisher checkout configuration is missing")
+        require(
+            checkout_with.get("ref") == "${{ github.event.repository.default_branch }}",
+            "publisher checkout is not pinned to the default branch",
+        )
+        require(checkout_with.get("persist-credentials") is False, "publisher checkout persists credentials")
         text = (root / ".github/workflows/publish-review.yml").read_text(encoding="utf-8")
-        require("github.event.repository.default_branch" in text, "publisher does not pin checkout to the default branch")
-        require("persist-credentials: false" in text, "publisher checkout persists credentials")
         require("pull_request_target" not in text, "publisher uses pull_request_target")
         require("github.event.workflow_run.head_sha" not in text, "publisher workflow directly checks out the PR head")
-        return "workflow_run publisher has exact minimal permissions and default-branch checkout"
+        return "workflow_run publisher has exact minimal permissions and structural default-branch checkout"
 
     check("review-publisher-trusted-workflow-boundary", workflow_boundary)
 
     def analysis_job_has_no_write_authority() -> str:
         workflow = yaml.safe_load((root / ".github/workflows/deterministic-review.yml").read_text(encoding="utf-8"))
-        require(workflow.get("permissions") == {"contents": "read"}, "analysis workflow gained write permission")
+        permissions = workflow.get("permissions")
+        require(permissions == {"contents": "read"}, "analysis workflow gained write permission")
+        jobs = workflow.get("jobs")
+        require(isinstance(jobs, dict), "analysis jobs are missing")
+        job = jobs.get("deterministic-review")
+        require(isinstance(job, dict), "deterministic review job is missing")
+        require(job.get("permissions", permissions) == permissions, "analysis job overrides read-only permissions")
+        steps = job.get("steps")
+        require(isinstance(steps, list), "analysis steps are missing")
+        scripts = [str(step.get("run", "")) for step in steps if isinstance(step, dict)]
+        require(any("create_review_publication_envelope.py" in script for script in scripts), "analysis workflow does not create the identity envelope")
+        require(
+            any(
+                "evidence/review-publication-artifact" in script
+                and "publication-envelope.json" in script
+                and "review-report.json" in script
+                and "review-summary.md" in script
+                for script in scripts
+            ),
+            "analysis workflow does not stage required publication files at the artifact root",
+        )
+        uploads = [
+            step
+            for step in steps
+            if isinstance(step, dict) and str(step.get("uses", "")).startswith("actions/upload-artifact@")
+        ]
+        require(len(uploads) == 1, "analysis workflow must have exactly one artifact upload step")
+        upload_with = uploads[0].get("with")
+        require(isinstance(upload_with, dict), "artifact upload configuration is missing")
+        require(
+            str(upload_with.get("path", "")).strip() == "evidence/review-publication-artifact/",
+            "artifact upload path does not preserve root publication paths",
+        )
         text = (root / ".github/workflows/deterministic-review.yml").read_text(encoding="utf-8")
-        require("create_review_publication_envelope.py" in text, "analysis workflow does not create the identity envelope")
         require("secrets.GITHUB_TOKEN" not in text, "analysis workflow received a token secret")
-        return "pull-request analysis remains read-only and uploads a bounded envelope"
+        return "pull-request analysis remains read-only and uploads root-bound publication files"
 
     check("review-publisher-analysis-remains-unprivileged", analysis_job_has_no_write_authority)
 
@@ -175,8 +224,10 @@ def register() -> None:
     def path_and_duplicate_attacks_blocked() -> str:
         identity = _identity()
         for extras, expected in (
-            ([('../escape', b'x')], "unsafe archive path"),
-            ([('review-report.json', b'{}')], "duplicate archive entry"),
+            ([("../escape", b"x")], "unsafe archive path"),
+            ([("checks/./result.json", b"x")], "unsafe archive path"),
+            ([("checks//result.json", b"x")], "unsafe archive path"),
+            ([("review-report.json", b"{}")], "duplicate archive entry"),
         ):
             try:
                 inspect_publication_archive(_archive(identity, extras), identity, _limits())
@@ -184,7 +235,7 @@ def register() -> None:
                 require(expected in str(error), f"wrong rejection for {extras!r}: {error}")
             else:
                 raise AssertionError(f"archive attack passed: {extras!r}")
-        return "path traversal and duplicate ZIP members rejected before extraction"
+        return "path traversal, non-normalized names, and duplicate ZIP members rejected before extraction"
 
     check("review-publisher-archive-namespace-attacks-blocked", path_and_duplicate_attacks_blocked)
 
