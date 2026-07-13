@@ -99,6 +99,7 @@ def register() -> None:
             "axiom_review/publisher_core.py",
             "axiom_review/publisher_artifact.py",
             "axiom_review/publisher_github.py",
+            "axiom_review/publisher_live_identity.py",
             "tools/create_review_publication_envelope.py",
             "tools/publish_review_summary.py",
             "review/contracts/0.1.0/publication-envelope.schema.json",
