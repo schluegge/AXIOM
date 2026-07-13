@@ -1,0 +1,43 @@
+name: AXIOM review publisher
+
+on:
+  workflow_run:
+    workflows: [AXIOM deterministic review]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: axiom-review-publisher-${{ github.event.repository.id }}
+  cancel-in-progress: false
+
+jobs:
+  publish-review:
+    if: ${{ github.event.workflow_run.event == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out trusted default-branch publisher code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+
+      - name: Install publisher dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check -r requirements-proof.txt
+          python3 -m pip check
+
+      - name: Validate and publish the exact workflow-run artifact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/publish_review_summary.py --event "$GITHUB_EVENT_PATH"
