@@ -6,6 +6,7 @@ from typing import Any
 
 from .publisher_core import PublicationRejected, _SHA40, _reject
 
+
 @dataclass(frozen=True)
 class HttpResponse:
     status: int
@@ -153,6 +154,21 @@ class GitHubRestApi:
         if not isinstance(value, dict):
             raise PublicationRejected("GitHub pull request response has invalid shape")
         return value
+
+    def list_pull_request_files(self, repository: str, number: int) -> list[dict[str, Any]]:
+        files: list[dict[str, Any]] = []
+        for page in range(1, 31):
+            value = self._request_json(
+                "GET",
+                f"/repos/{repository}/pulls/{number}/files?per_page=100&page={page}",
+            )
+            if not isinstance(value, list):
+                raise PublicationRejected("GitHub pull request files response has invalid shape")
+            page_items = [item for item in value if isinstance(item, dict)]
+            files.extend(page_items)
+            if len(value) < 100:
+                return files
+        raise PublicationRejected("GitHub pull request file pagination exceeded limit")
 
     def list_issue_comments(self, repository: str, number: int) -> list[dict[str, Any]]:
         comments: list[dict[str, Any]] = []
