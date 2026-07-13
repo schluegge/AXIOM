@@ -1,6 +1,6 @@
 # AXIOM Automated Review Report Contract 0.1.0
 
-Status: implemented contract and deterministic gate. This document does not claim an AI provider, PR comment publisher, cross-workflow staleness binding, branch policy, or merge authority.
+Status: implemented report contract, deterministic gate, exact-head freshness binding, and safe PR summary publisher. This document does not claim an AI provider, merge authority, branch policy, or advisory AI reviewer.
 
 ## Authority boundary
 
@@ -12,7 +12,7 @@ A deterministic reviewer may emit blocking or advisory findings. An `advisory_ai
 
 Every report identifies its report kind and schema version, repository, pull-request number, base SHA, exact reviewed head SHA, generation time, reviewer class, status, checks, findings, known-unreviewed sections, unavailable sections, and semantic digest.
 
-A report with an absent or malformed exact head SHA is invalid. Later roadmap issues define live staleness checks against GitHub; this contract only preserves the identity required for those checks.
+A report with an absent or malformed exact head SHA is invalid. The exact-head freshness envelope binds the report to trusted workflow-run identity, proof artifact digest, and report digest. The safe publisher compares this preserved identity with the trusted workflow-run event and the live pull-request head. It reports `CURRENT` or `STALE` without changing the report status.
 
 ## Findings and checks
 
@@ -128,18 +128,86 @@ claim content-digest binding.
 ### Workflow boundary
 
 `.github/workflows/deterministic-review.yml` runs on `pull_request` with
-`contents: read` only, checks out the exact `pull_request.head.sha`, runs
-`run_repo_proof.py` to produce exact-head proof evidence, runs the gate, and
-uploads bounded artifacts on success and failure. It publishes no comments
-and holds no write authority. The existing proof and roadmap workflows remain
-separate required checks.
+`contents: read` only, checks out the exact `pull_request.head.sha`, produces
+exact-head proof evidence and its deterministic ZIP digest, runs the gate with
+trusted workflow-run identity, creates the publication envelope beside the
+freshness-bound report and summary, and uploads bounded artifacts on success
+and failure. It publishes no comments and holds no write authority. The
+existing proof and roadmap workflows remain separate required checks.
 
 ### Gate boundary
 
-The gate binds proof evidence to the reviewed head by producing it in the
-same checkout and by recomputed-result comparison. Cross-workflow staleness
-classification, artifact-digest binding to workflow runs, and summary
-publication remain governed by issues #35 and #36 and are not claimed here.
+The gate binds proof evidence to the reviewed head by producing it in the same
+checkout, recomputing contract results, and recording trusted workflow-run and
+proof-artifact identities in its freshness envelope. It does not perform a
+network staleness check or publish comments. Those operations belong only to
+the trusted publisher below.
+
+## Safe review publisher 0.1.0
+
+`axiom_review/publisher.py`, `tools/create_review_publication_envelope.py`, and
+`tools/publish_review_summary.py` implement the two-stage publication boundary.
+The read-only PR workflow creates `publication-envelope.json` beside the report
+and summary. The envelope records repository, PR, base/head identity, workflow
+name, run ID, run attempt, artifact name, exact file sizes, and SHA-256 digests.
+
+`.github/workflows/publish-review.yml` runs only from the default branch through
+`workflow_run`. It has `actions: read`, `contents: read`, and
+`pull-requests: write`. It checks out only trusted default-branch code with
+persisted credentials disabled. It never checks out or executes PR code and
+never extracts artifact files.
+
+### Trusted artifact validation
+
+The publisher first resolves the exact workflow-run head through GitHub's
+commit-associated pull-request endpoint. `workflow_run.pull_requests` is only
+an optional hint, so an empty fork-style list remains supported; no match or an
+ambiguous match fails closed. It then requires exactly one non-expired artifact
+whose name is derived from the trusted workflow-run ID and downloads the raw ZIP
+through the GitHub Artifacts REST endpoint. Authentication is used only for the
+GitHub API request; the temporary HTTPS redirect is followed without forwarding
+the Authorization header.
+
+Before any report is accepted, the publisher rejects:
+
+- oversized archive bytes, entry count, individual files, total decompressed
+  bytes, or compression ratio;
+- absolute, dot-segment, backslash, NUL, duplicate, directory, symbolic-link,
+  encrypted, or unsupported-compression members;
+- missing required files, malformed UTF-8/JSON, unknown envelope fields, or
+  envelope schema violations;
+- foreign repository, wrong PR, wrong base/head, wrong workflow, wrong run,
+  wrong attempt, or wrong artifact name;
+- file-size or SHA-256 disagreement;
+- report schema or semantic-validator findings, non-canonical report JSON, or a
+  summary that differs from trusted deterministic rendering.
+
+### Idempotent comment and anti-rollback law
+
+Only a top-level issue comment authored by `github-actions[bot]` and containing
+the stable AXIOM hidden marker is trusted as the existing publication. A human
+marker forgery is ignored. Zero trusted markers creates one comment; one
+updates it; multiple trusted markers fail closed.
+
+The marker preserves reviewed head, observed current head, workflow-run ID, and
+attempt. A result for the current PR head outranks a stale result. When both
+results have equal freshness, the higher workflow-run ID and attempt wins.
+Repeated delivery of the same run updates the same comment. Therefore an older
+or stale completion cannot overwrite a newer current publication.
+
+The comment contains separate deterministic and advisory sections, exact
+reviewed/current SHAs, `CURRENT` or `STALE`, the workflow-run link, and the full
+retained artifact link. Advisory AI is explicitly not run and has no blocking
+or merge authority. UTF-8 byte-bounded truncation retains the identity and
+artifact links.
+
+### Publisher boundary
+
+Publisher failure is visible as a failure of the separate privileged workflow.
+It cannot change the deterministic report, its status, a required check result,
+branch policy, approval state, or merge state. The publisher consumes the
+REV-4 freshness-bound report and workflow artifact but does not gain authority
+to rewrite or reinterpret deterministic Evidence.
 
 ## Stable validator findings
 
