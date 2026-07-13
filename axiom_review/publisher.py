@@ -1,4 +1,3 @@
-from .publisher_artifact import inspect_publication_archive as _legacy_inspect_publication_archive
 from .publisher_core import (
     ArtifactLimits,
     ExistingPublication,
