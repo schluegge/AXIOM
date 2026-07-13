@@ -28,13 +28,15 @@ _REQUIRED_ARCHIVE_PATHS = {
     "review-summary.md",
 }
 
+
 def _is_safe_archive_path(name: str) -> bool:
     if not name or "\\" in name or "\x00" in name:
         return False
     path = PurePosixPath(name)
     if path.is_absolute() or not path.parts:
         return False
-    return all(part not in {"", ".", ".."} for part in path.parts)
+    return name == path.as_posix() and all(part not in {"", ".", ".."} for part in path.parts)
+
 
 def _validate_limits(limits: ArtifactLimits) -> None:
     for name in (
