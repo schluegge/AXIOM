@@ -79,8 +79,22 @@ jobs:
           --proof-artifact-name "$PROOF_ARTIFACT_NAME"
           --proof-artifact-digest "$PROOF_ARTIFACT_DIGEST"
 
+      - name: Verify publication inputs exist
+        id: publication-inputs
+        if: ${{ always() }}
+        env:
+          PROOF_ARTIFACT_NAME: ${{ steps.proof-artifact.outputs.name }}
+        run: |
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+          # steps.proof-artifact.outputs.name is trusted only when the named file exists.
+          test -n "$PROOF_ARTIFACT_NAME" || exit 0
+          test -f "evidence/$PROOF_ARTIFACT_NAME" || exit 0
+          test -f evidence/deterministic-review/review-report.json || exit 0
+          test -f evidence/deterministic-review/review-summary.md || exit 0
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Bind review output to the workflow-run identity
-        if: always()
+        if: ${{ always() && steps.publication-inputs.outputs.ready == 'true' }}
         env:
           ARTIFACT_NAME: axiom-deterministic-review-${{ github.run_id }}
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -97,7 +111,7 @@ jobs:
           --artifact-name "$ARTIFACT_NAME"
 
       - name: Stage root-bound publication artifact
-        if: always()
+        if: ${{ always() && steps.publication-inputs.outputs.ready == 'true' }}
         env:
           PROOF_ARTIFACT_NAME: ${{ steps.proof-artifact.outputs.name }}
         run: |
@@ -109,7 +123,7 @@ jobs:
           cp "evidence/$PROOF_ARTIFACT_NAME" "evidence/review-publication-artifact/$PROOF_ARTIFACT_NAME"
 
       - name: Upload deterministic review artifacts
-        if: always()
+        if: ${{ always() && steps.publication-inputs.outputs.ready == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: axiom-deterministic-review-${{ github.run_id }}
