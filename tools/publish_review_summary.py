@@ -136,6 +136,13 @@ def _changed_paths(files: list[dict[str, Any]]) -> list[str]:
         if not isinstance(filename, str) or not filename:
             raise PublicationRejected("GitHub reviewed-commit file lacks a valid filename")
         paths.append(filename)
+        if item.get("status") == "renamed":
+            previous_filename = item.get("previous_filename")
+            if not isinstance(previous_filename, str) or not previous_filename:
+                raise PublicationRejected(
+                    "GitHub reviewed-commit rename lacks a valid previous filename"
+                )
+            paths.append(previous_filename)
     return paths
 
 
