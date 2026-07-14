@@ -149,6 +149,23 @@ class GitHubRestApi:
             raise PublicationRejected("GitHub commit pull-request response has invalid shape")
         return [item for item in value if isinstance(item, dict)]
 
+    def list_compare_files(
+        self, repository: str, base_sha: str, head_sha: str
+    ) -> list[dict[str, Any]]:
+        _reject(_SHA40.fullmatch(base_sha) is None, "base commit SHA has invalid format")
+        _reject(_SHA40.fullmatch(head_sha) is None, "head commit SHA has invalid format")
+        value = self._request_json(
+            "GET", f"/repos/{repository}/compare/{base_sha}...{head_sha}", max_bytes=8_000_000
+        )
+        if not isinstance(value, dict) or not isinstance(value.get("files"), list):
+            raise PublicationRejected("GitHub compare response has invalid shape")
+        files = [item for item in value["files"] if isinstance(item, dict)]
+        if len(value["files"]) >= 300:
+            raise PublicationRejected("GitHub compare file list reached limit; trusted publication refused")
+        if len(files) != len(value["files"]):
+            raise PublicationRejected("GitHub compare file list contains an invalid entry")
+        return files
+
     def get_pull_request(self, repository: str, number: int) -> dict[str, Any]:
         value = self._request_json("GET", f"/repos/{repository}/pulls/{number}")
         if not isinstance(value, dict):
