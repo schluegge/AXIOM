@@ -10,6 +10,7 @@ from axiom_review.publisher import (
     PublicationRejected,
     ensure_trusted_gate_inputs_unchanged,
 )
+from tools.publish_review_summary import _changed_paths
 
 
 class TrustedGateInputTests(unittest.TestCase):
@@ -93,6 +94,30 @@ class TrustedGateInputTests(unittest.TestCase):
                 f"/repos/schluegge/AXIOM/compare/{base_sha}...{head_sha}"
             )
         )
+
+    def test_reviewed_commit_rename_includes_previous_protected_path(self) -> None:
+        paths = _changed_paths(
+            [
+                {
+                    "filename": "tests/renamed_review_gate.py",
+                    "previous_filename": "tests/test_review_gate.py",
+                    "status": "renamed",
+                }
+            ]
+        )
+
+        self.assertEqual(
+            paths,
+            ["tests/renamed_review_gate.py", "tests/test_review_gate.py"],
+        )
+        with self.assertRaisesRegex(
+            PublicationRejected,
+            "tests/test_review_gate.py",
+        ):
+            ensure_trusted_gate_inputs_unchanged(
+                paths,
+                ["tests/test_review_gate.py"],
+            )
 
     def test_reviewed_commit_diff_rejects_possible_file_truncation(self) -> None:
         payload = json.dumps(
