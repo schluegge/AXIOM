@@ -134,7 +134,7 @@ def _changed_paths(files: list[dict[str, Any]]) -> list[str]:
     for item in files:
         filename = item.get("filename")
         if not isinstance(filename, str) or not filename:
-            raise PublicationRejected("GitHub pull request file lacks a valid filename")
+            raise PublicationRejected("GitHub reviewed-commit file lacks a valid filename")
         paths.append(filename)
     return paths
 
@@ -150,11 +150,6 @@ def publish(event_path: Path, root: Path, token: str, api_url: str) -> dict[str,
         ),
     )
 
-    ensure_trusted_gate_inputs_unchanged(
-        _changed_paths(api.list_pull_request_files(identity.repository, identity.pull_request_number)),
-        _protected_paths(root),
-    )
-
     artifact = _select_artifact(
         api.list_run_artifacts(identity.repository, identity.workflow_run_id),
         identity.artifact_name,
@@ -165,6 +160,18 @@ def publish(event_path: Path, root: Path, token: str, api_url: str) -> dict[str,
         max_bytes=LIMITS.max_archive_bytes,
     )
     bundle = inspect_publication_archive(archive_bytes, identity, LIMITS)
+    identity = bundle.identity
+
+    ensure_trusted_gate_inputs_unchanged(
+        _changed_paths(
+            api.list_compare_files(
+                identity.repository,
+                identity.base_sha,
+                identity.reviewed_head_sha,
+            )
+        ),
+        _protected_paths(root),
+    )
 
     envelope_schema = _load_json_object(root / ENVELOPE_SCHEMA_PATH, "publication envelope schema")
     _validate_schema(bundle.envelope, envelope_schema, "publication envelope")
