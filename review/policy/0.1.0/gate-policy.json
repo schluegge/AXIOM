@@ -4,7 +4,9 @@
   "protected_paths": [
     ".github/workflows/deterministic-review.yml",
     ".github/workflows/proof.yml",
+    ".github/workflows/publish-review.yml",
     ".github/workflows/v1-roadmap-contract.yml",
+    "REV3_REVIEW_PUBLISHER_SOURCE_EVIDENCE.md",
     "agents/agent_b_aggregate_generated_checks.py",
     "agents/agent_b_aggregate_layout_checks.py",
     "agents/agent_b_aggregate_semantic_checks.py",
@@ -18,10 +20,22 @@
     "agents/agent_b_reference_checks.py",
     "agents/agent_b_review.py",
     "agents/agent_b_review_gate_checks.py",
+    "agents/agent_b_review_publisher_checks.py",
     "agents/agent_b_support.py",
     "agents/agent_b_trusted_task_authority_checks.py",
+    "axiom_bench/",
+    "axiom_contract/",
+    "axiom_review/__init__.py",
+    "axiom_review/contract.py",
     "axiom_review/freshness.py",
     "axiom_review/freshness_contract.py",
+    "axiom_review/gate.py",
+    "axiom_review/publisher.py",
+    "axiom_review/publisher_artifact.py",
+    "axiom_review/publisher_core.py",
+    "axiom_review/publisher_github.py",
+    "axiom_review/publisher_live_identity.py",
+    "axiom_review/publisher_trust.py",
     "benchmarks/contracts/0.1.0/contract.json",
     "benchmarks/contracts/0.1.0/trusted-tasks.json",
     "benchmarks/schemas/0.1.0/attempt.schema.json",
@@ -42,6 +56,7 @@
     "docs/superpowers/specs/2026-07-12-rev4-exact-head-staleness-design.md",
     "requirements-proof.txt",
     "review/contracts/0.1.0/gate-policy.schema.json",
+    "review/contracts/0.1.0/publication-envelope.schema.json",
     "review/contracts/0.1.0/report.schema.json",
     "review/contracts/0.2.0/freshness.schema.json",
     "review/policy/0.1.0/gate-policy.json",
@@ -63,11 +78,17 @@
     "tests/test_review_freshness.py",
     "tests/test_review_freshness_contract.py",
     "tests/test_review_gate.py",
+    "tests/test_review_publisher.py",
+    "tests/test_review_publisher_live_pr_state.py",
+    "tests/test_review_publisher_proof_artifact.py",
+    "tests/test_review_publisher_trusted_gate.py",
     "tests/test_trusted_task_authority.py",
     "tests/test_vertical.py",
     "tools/check_benchmark_contract.py",
     "tools/check_project_contract.py",
     "tools/check_v1_roadmap.py",
+    "tools/create_review_publication_envelope.py",
+    "tools/publish_review_summary.py",
     "tools/replay_benchmark_conformance.py",
     "tools/run_benchmark_conformance.py",
     "tools/run_deterministic_review.py"
@@ -85,6 +106,7 @@
     "agents.agent_b_lvalue_checks",
     "agents.agent_b_reference_checks",
     "agents.agent_b_review_gate_checks",
+    "agents.agent_b_review_publisher_checks",
     "agents.agent_b_trusted_task_authority_checks"
   ],
   "workflow_rules": {
@@ -100,6 +122,13 @@
       ".github/workflows/proof.yml": {
         "permissions": {
           "contents": "read"
+        }
+      },
+      ".github/workflows/publish-review.yml": {
+        "permissions": {
+          "actions": "read",
+          "contents": "read",
+          "pull-requests": "write"
         }
       },
       ".github/workflows/v1-roadmap-contract.yml": {

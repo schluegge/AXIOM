@@ -31,7 +31,9 @@ Implemented:
   with offline validation and neutralized rendering;
 - `review.deterministic-gate-0.1` — deterministic pull-request review gate
   with exact-head proof verification, protected baseline, and workflow
-  security laws.
+  security laws;
+- `review.safe-publisher-0.1` — idempotent workflow-run publisher with strict
+  artifact validation, exact-head staleness display, and anti-rollback comments.
 
 Not implemented or proven:
 
@@ -66,6 +68,7 @@ For review automation work also read:
 
 - `AUTOMATED_REVIEW_CONTRACT.md`
 - `REV2_REVIEW_GATE_SOURCE_EVIDENCE.md`
+- `REV3_REVIEW_PUBLISHER_SOURCE_EVIDENCE.md`
 - `review/policy/0.1.0/gate-policy.json`
 
 ## Mandatory laws
@@ -131,16 +134,23 @@ For review automation work also read:
   review remains advisory and cannot set the merge verdict.
 - The deterministic gate fails closed on malformed input, internal error,
   invalid policy, unparseable workflows, or report-validation failure.
-- Review workflows use `pull_request` with read-only permissions;
+- Pull-request analysis uses `pull_request` with read-only permissions;
   `pull_request_target` checkout or execution is forbidden.
+- Privileged publication uses `workflow_run`, executes only trusted
+  default-branch code, never checks out or executes pull-request code, and has
+  only `actions: read`, `contents: read`, and `pull-requests: write` authority.
+- Publication validates the raw artifact archive, schema, repository, pull
+  request, workflow run, exact reviewed head, digests, and trusted rendering
+  before it writes one marker comment.
+- A stale or older result may never overwrite a newer current publication.
 - Third-party Actions remain pinned by immutable full-length commit SHA.
 - Protected tests, Agent B registrations, proof stages, schemas, and
   workflows may be removed only through an explicit gate-policy edit;
   content weakening remains Agent B and adversarial-review scope.
 - Review automation may not weaken tests, proof, contracts, permissions, or
   branch policy to obtain a green result.
-- The gate never replaces an existing output directory and never publishes
-  comments.
+- The deterministic gate never replaces an existing output directory and
+  never publishes comments.
 
 ## Required feature workflow
 

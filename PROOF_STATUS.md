@@ -23,7 +23,7 @@ contract checker.
 
 The current PR proof executes:
 
-- project contract: 10 current capabilities, 14 deferred features, 0 findings;
+- project contract: 11 current capabilities, 14 deferred features, 0 findings;
 - benchmark contract: 8 indexed schemas, 0 findings;
 - unit/integration suite: 179/179;
 - Agent B release-blocking checks: 99/99;
@@ -108,8 +108,20 @@ contracts; exact-head proof-evidence re-hashing with insertion and drift
 rejection; a versioned protected baseline for tests, Agent B registrations,
 proof stages, schemas, and workflows; workflow permission, trigger, and
 action-pinning laws; bounded fail-closed reporting; and a read-only
-`pull_request` workflow. Comment publication, cross-workflow staleness
-binding, and any AI reviewer remain unimplemented and unclaimed.
+`pull_request` workflow.
+
+The merged REV-4 exact-head layer binds trusted workflow-run identity, rerun
+attempt, proof artifact digest, and deterministic report digest in a validated
+freshness envelope. It emits exact-head freshness evidence and rejects stale,
+mixed-head, missing, pending, cancelled, skipped, unavailable, or tampered
+source states without weakening the independent proof or deterministic gate.
+
+Capability `review.safe-publisher-0.1` implements the privileged publication
+boundary: a run-bound envelope from the unprivileged job, raw ZIP validation
+without extraction, report/schema/digest/renderer verification in trusted
+default-branch code, live PR-head comparison, one bounded marker comment, and
+anti-rollback ordering across asynchronous runs. It adds no model, approval,
+merge, or branch-policy authority.
 
 ## Supported trust boundary
 
@@ -158,9 +170,9 @@ follow-up work before broadening language/native claims.
 
 ## Still unproven
 
-- PR review summary publication, exact-head staleness binding across
-  workflows, an advisory AI reviewer, and enforced merge policy (issues #35
-  through #41);
+- provider-neutral advisory AI review, untrusted-content and permission
+  hardening, the adversarial regression matrix, enforced merge policy, and
+  complete rollout Evidence (issues #37 through #41);
 - frozen AXIOM-Bench `0.1.0` suite;
 - equal-spec language packs and real AXIOM/Rust/Zig/Go task corpus;
 - frozen comparison toolchains and equivalence reviews;

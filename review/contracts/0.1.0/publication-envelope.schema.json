@@ -1,0 +1,42 @@
+{
+  "$id": "https://axiom.invalid/review/contracts/0.1.0/publication-envelope.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_name": {"minLength": 1, "type": "string"},
+    "base_sha": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+    "document_kind": {"const": "axiom.automated-review.publication-envelope"},
+    "pull_request_number": {"minimum": 1, "type": "integer"},
+    "report_bytes": {"minimum": 0, "type": "integer"},
+    "report_path": {"const": "review-report.json"},
+    "report_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "repository": {"pattern": "^[^/]+/[^/]+$", "type": "string"},
+    "reviewed_head_sha": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+    "schema_version": {"const": "0.1.0"},
+    "summary_bytes": {"minimum": 0, "type": "integer"},
+    "summary_path": {"const": "review-summary.md"},
+    "summary_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "workflow_name": {"minLength": 1, "type": "string"},
+    "workflow_run_attempt": {"minimum": 1, "type": "integer"},
+    "workflow_run_id": {"minimum": 1, "type": "integer"}
+  },
+  "required": [
+    "document_kind",
+    "schema_version",
+    "repository",
+    "pull_request_number",
+    "base_sha",
+    "reviewed_head_sha",
+    "workflow_run_id",
+    "workflow_run_attempt",
+    "workflow_name",
+    "artifact_name",
+    "report_path",
+    "report_bytes",
+    "report_sha256",
+    "summary_path",
+    "summary_bytes",
+    "summary_sha256"
+  ],
+  "type": "object"
+}

@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from typing import Any, Callable
 
+import yaml
+
 from axiom_contract import check_project_contract, render_text
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,13 +35,15 @@ class ProjectContractTests(unittest.TestCase):
         result = check_project_contract(ROOT, CONTRACT, SCHEMA)
         self.assertEqual(result["status"], "passed", render_text(result))
         self.assertEqual(result["exit_code"], 0)
-        self.assertEqual(result["counts"]["current_features"], 10)
+        self.assertEqual(result["counts"]["current_features"], 11)
         self.assertEqual(result["counts"]["findings"], 0)
         features = {item["id"]: item for item in self.load_contract()["features"]}
         self.assertEqual(features["review.report-contract-0.1"]["status"], "implemented")
         self.assertEqual(features["review.report-contract-0.1"]["proven_targets"], [])
         self.assertEqual(features["review.deterministic-gate-0.1"]["status"], "implemented")
         self.assertEqual(features["review.deterministic-gate-0.1"]["proven_targets"], [])
+        self.assertEqual(features["review.safe-publisher-0.1"]["status"], "implemented")
+        self.assertEqual(features["review.safe-publisher-0.1"]["proven_targets"], [])
         self.assertEqual(features["benchmark.trusted-conformance-0.1"]["status"], "implemented")
         self.assertEqual(features["benchmark.trusted-conformance-0.1"]["proven_targets"], [])
 
@@ -48,6 +52,46 @@ class ProjectContractTests(unittest.TestCase):
         second = check_project_contract(ROOT, CONTRACT, SCHEMA)
         self.assertEqual(first, second)
         self.assertEqual(render_text(first), render_text(second))
+
+    def test_review_artifact_staging_is_guarded_by_verified_outputs(self) -> None:
+        workflow_path = ROOT / ".github/workflows/deterministic-review.yml"
+        workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+        jobs = workflow.get("jobs")
+        self.assertIsInstance(jobs, dict)
+        job = jobs.get("deterministic-review")
+        self.assertIsInstance(job, dict)
+        steps = job.get("steps")
+        self.assertIsInstance(steps, list)
+
+        readiness = next(
+            (step for step in steps if isinstance(step, dict) and step.get("id") == "publication-inputs"),
+            None,
+        )
+        self.assertIsNotNone(readiness)
+        self.assertEqual(readiness.get("if"), "${{ always() }}")
+        readiness_script = str(readiness.get("run", ""))
+        for required in (
+            "evidence/deterministic-review/review-report.json",
+            "evidence/deterministic-review/review-summary.md",
+            "steps.proof-artifact.outputs.name",
+            "ready=true",
+        ):
+            self.assertIn(required, readiness_script)
+
+        guarded_names = {
+            "Bind review output to the workflow-run identity",
+            "Stage root-bound publication artifact",
+            "Upload deterministic review artifacts",
+        }
+        guarded_steps = {
+            str(step.get("name")): step
+            for step in steps
+            if isinstance(step, dict) and str(step.get("name")) in guarded_names
+        }
+        self.assertEqual(set(guarded_steps), guarded_names)
+        expected_guard = "${{ always() && steps.publication-inputs.outputs.ready == 'true' }}"
+        for name in guarded_names:
+            self.assertEqual(guarded_steps[name].get("if"), expected_guard, name)
 
     def test_broken_repository_path_is_rejected(self) -> None:
         result = self.check_mutation(

@@ -79,13 +79,54 @@ jobs:
           --proof-artifact-name "$PROOF_ARTIFACT_NAME"
           --proof-artifact-digest "$PROOF_ARTIFACT_DIGEST"
 
+      - name: Verify publication inputs exist
+        id: publication-inputs
+        if: ${{ always() }}
+        env:
+          PROOF_ARTIFACT_NAME: ${{ steps.proof-artifact.outputs.name }}
+        run: |
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+          # steps.proof-artifact.outputs.name is trusted only when the named file exists.
+          test -n "$PROOF_ARTIFACT_NAME" || exit 0
+          test -f "evidence/$PROOF_ARTIFACT_NAME" || exit 0
+          test -f evidence/deterministic-review/review-report.json || exit 0
+          test -f evidence/deterministic-review/review-summary.md || exit 0
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Bind review output to the workflow-run identity
+        if: ${{ always() && steps.publication-inputs.outputs.ready == 'true' }}
+        env:
+          ARTIFACT_NAME: axiom-deterministic-review-${{ github.run_id }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >
+          python3 tools/create_review_publication_envelope.py
+          --event "$GITHUB_EVENT_PATH"
+          --report evidence/deterministic-review/review-report.json
+          --summary evidence/deterministic-review/review-summary.md
+          --output evidence/deterministic-review/publication-envelope.json
+          --workflow-run-id "${{ github.run_id }}"
+          --workflow-run-attempt "${{ github.run_attempt }}"
+          --workflow-name "${{ github.workflow }}"
+          --workflow-run-url "$WORKFLOW_RUN_URL"
+          --artifact-name "$ARTIFACT_NAME"
+
+      - name: Stage root-bound publication artifact
+        if: ${{ always() && steps.publication-inputs.outputs.ready == 'true' }}
+        env:
+          PROOF_ARTIFACT_NAME: ${{ steps.proof-artifact.outputs.name }}
+        run: |
+          rm -rf evidence/review-publication-artifact
+          mkdir -p evidence/review-publication-artifact
+          cp evidence/deterministic-review/publication-envelope.json evidence/review-publication-artifact/publication-envelope.json
+          cp evidence/deterministic-review/review-report.json evidence/review-publication-artifact/review-report.json
+          cp evidence/deterministic-review/review-summary.md evidence/review-publication-artifact/review-summary.md
+          cp "evidence/$PROOF_ARTIFACT_NAME" "evidence/review-publication-artifact/$PROOF_ARTIFACT_NAME"
+
       - name: Upload deterministic review artifacts
-        if: always()
+        if: ${{ always() && steps.publication-inputs.outputs.ready == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: axiom-deterministic-review-${{ github.run_id }}
-          path: |
-            evidence/deterministic-review/
-            evidence/axiom-repo-proof-${{ github.run_id }}.zip
+          path: evidence/review-publication-artifact/
           if-no-files-found: error
           retention-days: 14
