@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import unittest
+from pathlib import Path
 
 from axiom_review.publisher import (
     GitHubRestApi,
@@ -27,6 +29,14 @@ class TrustedGateInputTests(unittest.TestCase):
             ["tools/run_deterministic_review.py", "review/policy/0.1.0/gate-policy.json"],
         )
 
+    def test_gate_implementation_is_protected(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        policy = json.loads(
+            (root / "review/policy/0.1.0/gate-policy.json").read_text(encoding="utf-8")
+        )
+        self.assertIn("axiom_review/gate.py", policy["protected_paths"])
+        self.assertIn("axiom_review/contract.py", policy["protected_paths"])
+
     def test_pull_request_file_listing_is_paginated_and_bounded(self) -> None:
         calls: list[str] = []
 
@@ -47,6 +57,41 @@ class TrustedGateInputTests(unittest.TestCase):
         self.assertEqual(files[-1]["filename"], "docs/final.md")
         self.assertTrue(calls[0].endswith("/repos/schluegge/AXIOM/pulls/35/files?per_page=100&page=1"))
         self.assertTrue(calls[1].endswith("/repos/schluegge/AXIOM/pulls/35/files?per_page=100&page=2"))
+
+    def test_reviewed_commit_diff_uses_exact_base_and_head(self) -> None:
+        calls: list[str] = []
+        base_sha = "1" * 40
+        head_sha = "2" * 40
+
+        def transport(method, url, headers, body, max_bytes, follow_redirects):
+            calls.append(url)
+            return HttpResponse(
+                200,
+                {},
+                b'{"status":"ahead","files":[{"filename":"axiom_review/gate.py"}]}',
+            )
+
+        api = GitHubRestApi("token", transport=transport)
+        files = api.list_compare_files("schluegge/AXIOM", base_sha, head_sha)
+
+        self.assertEqual(files, [{"filename": "axiom_review/gate.py"}])
+        self.assertTrue(
+            calls[0].endswith(
+                f"/repos/schluegge/AXIOM/compare/{base_sha}...{head_sha}"
+            )
+        )
+
+    def test_reviewed_commit_diff_rejects_possible_file_truncation(self) -> None:
+        payload = json.dumps(
+            {"status": "ahead", "files": [{"filename": f"src/{index}.py"} for index in range(300)]}
+        ).encode("utf-8")
+
+        def transport(method, url, headers, body, max_bytes, follow_redirects):
+            return HttpResponse(200, {}, payload)
+
+        api = GitHubRestApi("token", transport=transport)
+        with self.assertRaisesRegex(PublicationRejected, "compare file list reached limit"):
+            api.list_compare_files("schluegge/AXIOM", "1" * 40, "2" * 40)
 
 
 if __name__ == "__main__":
