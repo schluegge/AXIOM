@@ -100,10 +100,14 @@ def register() -> None:
             "axiom_review/publisher_artifact.py",
             "axiom_review/publisher_github.py",
             "axiom_review/publisher_live_identity.py",
+            "axiom_review/publisher_trust.py",
             "tools/create_review_publication_envelope.py",
             "tools/publish_review_summary.py",
             "review/contracts/0.1.0/publication-envelope.schema.json",
             "tests/test_review_publisher.py",
+            "tests/test_review_publisher_live_pr_state.py",
+            "tests/test_review_publisher_proof_artifact.py",
+            "tests/test_review_publisher_trusted_gate.py",
             "agents/agent_b_review_publisher_checks.py",
         }
         require(required <= protected, f"publisher paths missing from protected baseline: {sorted(required - protected)}")
