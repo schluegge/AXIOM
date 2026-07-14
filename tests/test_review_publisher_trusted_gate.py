@@ -23,6 +23,16 @@ class TrustedGateInputTests(unittest.TestCase):
                 ["tools/run_deterministic_review.py", "review/policy/0.1.0/gate-policy.json"],
             )
 
+    def test_protected_gate_package_change_is_rejected(self) -> None:
+        with self.assertRaisesRegex(
+            PublicationRejected,
+            "axiom_contract/checker.py",
+        ):
+            ensure_trusted_gate_inputs_unchanged(
+                ["src/example.py", "axiom_contract/checker.py"],
+                ["axiom_contract/", "tools/run_deterministic_review.py"],
+            )
+
     def test_unprotected_change_is_allowed(self) -> None:
         ensure_trusted_gate_inputs_unchanged(
             ["src/example.py", "docs/example.md"],
@@ -34,8 +44,11 @@ class TrustedGateInputTests(unittest.TestCase):
         policy = json.loads(
             (root / "review/policy/0.1.0/gate-policy.json").read_text(encoding="utf-8")
         )
+        self.assertIn("axiom_review/__init__.py", policy["protected_paths"])
         self.assertIn("axiom_review/gate.py", policy["protected_paths"])
         self.assertIn("axiom_review/contract.py", policy["protected_paths"])
+        self.assertIn("axiom_contract/", policy["protected_paths"])
+        self.assertIn("axiom_bench/", policy["protected_paths"])
 
     def test_pull_request_file_listing_is_paginated_and_bounded(self) -> None:
         calls: list[str] = []
