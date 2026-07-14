@@ -32,7 +32,7 @@ class TrustedGateInputTests(unittest.TestCase):
 
         def transport(method, url, headers, body, max_bytes, follow_redirects):
             calls.append(url)
-            if "page=1" in url:
+            if url.endswith("page=1"):
                 payload = b"[" + b",".join(
                     b'{"filename":"src/file-' + str(index).encode("ascii") + b'.py"}'
                     for index in range(100)
